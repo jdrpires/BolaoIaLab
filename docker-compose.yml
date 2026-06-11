@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: bolao
+      POSTGRES_USER: bolao
+      POSTGRES_PASSWORD: bolao
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bolao -d bolao"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://bolao:bolao@postgres:5432/bolao
+      WHATSAPP_PROVIDER: baileys
+      WHATSAPP_GATEWAY_URL: http://whatsapp-gateway:3001
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      whatsapp-gateway:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+             python -m app.infrastructure.db.seed &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log"
+
+  whatsapp-gateway:
+    build:
+      context: ./whatsapp-gateway
+    environment:
+      PORT: 3001
+      BAILEYS_AUTH_DIR: /app/auth
+    ports:
+      - "3001:3001"
+    volumes:
+      - baileys_auth:/app/auth
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  postgres_data:
+  baileys_auth:
