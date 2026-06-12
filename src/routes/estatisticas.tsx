@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout } from "@/components/AppLayout";
 import { useRoundFeed, useStatisticsOverview } from "@/lib/api/hooks";
 import {
   Activity,
+  ArrowRight,
   BarChart3,
   PieChart as PieIcon,
   Sparkles,
@@ -306,10 +307,18 @@ function RoundFeedSection({ data }: { data?: ReturnType<typeof useRoundFeed>["da
             </div>
             <h2 className="font-display font-bold text-xl">{data?.stage ?? "Rodada atual"}</h2>
           </div>
-          <div className="grid grid-cols-3 gap-2 text-center text-xs">
-            <RoundMiniStat label="Jogos" value={data?.matches ?? 0} />
-            <RoundMiniStat label="Palpites" value={data?.predictions ?? 0} />
-            <RoundMiniStat label="Players" value={data?.participants ?? 0} />
+          <div className="flex flex-col items-end gap-3">
+            <Link
+              to="/rodada"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary/15 px-3 py-2 text-xs font-medium text-primary hover:bg-primary/20"
+            >
+              Página da rodada <ArrowRight className="size-3.5" />
+            </Link>
+            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+              <RoundMiniStat label="Jogos" value={data?.matches ?? 0} />
+              <RoundMiniStat label="Palpites" value={data?.predictions ?? 0} />
+              <RoundMiniStat label="Players" value={data?.participants ?? 0} />
+            </div>
           </div>
         </div>
 

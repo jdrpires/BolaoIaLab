@@ -245,6 +245,17 @@ class RoundRankingItem(BaseModel):
     rank: int
 
 
+class RoundBestPrediction(BaseModel):
+    id: UUID
+    full_name: str
+    company_name: str | None
+    match_id: UUID
+    match_label: str
+    predicted_score: str
+    result_score: str | None
+    points: int
+
+
 class RoundFeed(BaseModel):
     stage: str | None
     matches: int
@@ -252,6 +263,7 @@ class RoundFeed(BaseModel):
     participants: int
     highlights: list[RoundFeedHighlight]
     ranking: list[RoundRankingItem]
+    best_predictions: list[RoundBestPrediction] = []
 
 
 class MatchNotificationPayload(BaseModel):

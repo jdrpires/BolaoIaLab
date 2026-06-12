@@ -219,6 +219,16 @@ export type ApiRoundFeed = {
     predictions: number;
     rank: number;
   }>;
+  best_predictions: Array<{
+    id: string;
+    full_name: string;
+    company_name: string | null;
+    match_id: string;
+    match_label: string;
+    predicted_score: string;
+    result_score: string | null;
+    points: number;
+  }>;
 };
 
 export type ApiGameAnalysis = {

@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermosRouteImport } from './routes/termos'
+import { Route as RodadaRouteImport } from './routes/rodada'
 import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as PalpitesRouteImport } from './routes/palpites'
@@ -25,6 +26,11 @@ import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 const TermosRoute = TermosRouteImport.update({
   id: '/termos',
   path: '/termos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RodadaRoute = RodadaRouteImport.update({
+  id: '/rodada',
+  path: '/rodada',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RankingRoute = RankingRouteImport.update({
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/palpites': typeof PalpitesRoute
   '/privacidade': typeof PrivacidadeRoute
   '/ranking': typeof RankingRoute
+  '/rodada': typeof RodadaRoute
   '/termos': typeof TermosRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/palpites': typeof PalpitesRoute
   '/privacidade': typeof PrivacidadeRoute
   '/ranking': typeof RankingRoute
+  '/rodada': typeof RodadaRoute
   '/termos': typeof TermosRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/palpites': typeof PalpitesRoute
   '/privacidade': typeof PrivacidadeRoute
   '/ranking': typeof RankingRoute
+  '/rodada': typeof RodadaRoute
   '/termos': typeof TermosRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/palpites'
     | '/privacidade'
     | '/ranking'
+    | '/rodada'
     | '/termos'
     | '/auth/callback'
   fileRoutesByTo: FileRoutesByTo
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/palpites'
     | '/privacidade'
     | '/ranking'
+    | '/rodada'
     | '/termos'
     | '/auth/callback'
   id:
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/palpites'
     | '/privacidade'
     | '/ranking'
+    | '/rodada'
     | '/termos'
     | '/auth/callback'
   fileRoutesById: FileRoutesById
@@ -182,6 +194,7 @@ export interface RootRouteChildren {
   PalpitesRoute: typeof PalpitesRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   RankingRoute: typeof RankingRoute
+  RodadaRoute: typeof RodadaRoute
   TermosRoute: typeof TermosRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
 }
@@ -193,6 +206,13 @@ declare module '@tanstack/react-router' {
       path: '/termos'
       fullPath: '/termos'
       preLoaderRoute: typeof TermosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rodada': {
+      id: '/rodada'
+      path: '/rodada'
+      fullPath: '/rodada'
+      preLoaderRoute: typeof RodadaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ranking': {
@@ -286,6 +306,7 @@ const rootRouteChildren: RootRouteChildren = {
   PalpitesRoute: PalpitesRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   RankingRoute: RankingRoute,
+  RodadaRoute: RodadaRoute,
   TermosRoute: TermosRoute,
   AuthCallbackRoute: AuthCallbackRoute,
 }

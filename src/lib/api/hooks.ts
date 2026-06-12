@@ -34,6 +34,8 @@ export const apiKeys = {
   companies: ["companies"] as const,
   individualRanking: ["rankings", "individual"] as const,
   companyRanking: ["rankings", "companies"] as const,
+  roundRanking: (stage: string | null | undefined, limit: number) =>
+    ["rankings", "round", stage ?? "current", limit] as const,
   users: ["users"] as const,
   notifications: ["notifications"] as const,
   statistics: ["statistics"] as const,
@@ -79,6 +81,18 @@ export function useCompanyRanking() {
   return useQuery({
     queryKey: apiKeys.companyRanking,
     queryFn: () => apiGet<ApiCompanyRanking[]>("/rankings/companies"),
+    staleTime: 20_000,
+  });
+}
+
+export function useRoundRanking(stage: string | null | undefined, limit = 20) {
+  return useQuery({
+    queryKey: apiKeys.roundRanking(stage, limit),
+    queryFn: () =>
+      apiGet<ApiIndividualRanking[]>(
+        `/rankings/round?stage=${encodeURIComponent(stage ?? "")}&limit=${limit}`,
+      ),
+    enabled: Boolean(stage),
     staleTime: 20_000,
   });
 }

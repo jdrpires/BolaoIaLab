@@ -13,6 +13,7 @@ from app.schemas.common import (
     PopularScore,
     PredictionsByMatch,
     RoundFeed,
+    RoundBestPrediction,
     RoundFeedHighlight,
     RoundRankingItem,
     StatisticsKpis,
@@ -125,7 +126,7 @@ async def round_feed(
 ) -> RoundFeed:
     selected_stage = stage or await _current_stage(session)
     if not selected_stage:
-        return RoundFeed(stage=None, matches=0, predictions=0, participants=0, highlights=[], ranking=[])
+        return RoundFeed(stage=None, matches=0, predictions=0, participants=0, highlights=[], ranking=[], best_predictions=[])
 
     matches = await session.scalar(select(func.count(Match.id)).where(Match.stage == selected_stage)) or 0
     predictions = await session.scalar(
@@ -216,6 +217,46 @@ async def round_feed(
         for row in ranking_rows
     ]
 
+    best_rows = (
+        await session.execute(
+            select(
+                Prediction.id,
+                User.full_name,
+                Company.name.label("company_name"),
+                Match.id.label("match_id"),
+                Prediction.home_score,
+                Prediction.away_score,
+                Match.home_score.label("result_home_score"),
+                Match.away_score.label("result_away_score"),
+                Prediction.points,
+            )
+            .select_from(Prediction)
+            .join(User, User.id == Prediction.user_id)
+            .outerjoin(Company, Company.id == User.company_id)
+            .join(Match, Match.id == Prediction.match_id)
+            .where(User.is_active.is_(True), Match.stage == selected_stage, Prediction.scored_at.is_not(None))
+            .order_by(desc(Prediction.points), User.full_name)
+            .limit(8)
+        )
+    ).mappings().all()
+    best_predictions = [
+        RoundBestPrediction(
+            id=row["id"],
+            full_name=row["full_name"],
+            company_name=row["company_name"],
+            match_id=row["match_id"],
+            match_label=labels.get(row["match_id"], "Jogo"),
+            predicted_score=f"{row['home_score']} x {row['away_score']}",
+            result_score=(
+                f"{row['result_home_score']} x {row['result_away_score']}"
+                if row["result_home_score"] is not None and row["result_away_score"] is not None
+                else None
+            ),
+            points=int(row["points"] or 0),
+        )
+        for row in best_rows
+    ]
+
     return RoundFeed(
         stage=selected_stage,
         matches=int(matches),
@@ -223,6 +264,7 @@ async def round_feed(
         participants=int(participants),
         highlights=highlights,
         ranking=ranking,
+        best_predictions=best_predictions,
     )
 
 
