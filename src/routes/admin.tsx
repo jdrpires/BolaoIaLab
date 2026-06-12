@@ -12,6 +12,7 @@ import {
   useNotifications,
   useOperationalHealth,
   useRecalculateMatch,
+  useScoringRule,
   useSendMatchReminder,
   useSendMatchResult,
   useSendRanking,
@@ -22,6 +23,7 @@ import {
   useUpdateCompany,
   useUpdateMatch,
   useUpdateMatchResult,
+  useUpdateScoringRule,
   useUpdateTeam,
   useUpdateUser,
   useUsers,
@@ -49,6 +51,7 @@ import {
   RefreshCw,
   Send,
   Shield,
+  SlidersHorizontal,
   Trophy,
   UserCog,
   Users,
@@ -76,6 +79,7 @@ function AdminPage() {
 
         <OperationalHealthPanel />
         <AuditTrailPanel />
+        <ScoringRulesPanel />
 
         <div className="grid xl:grid-cols-2 gap-5">
           <CompanyForm />
@@ -140,6 +144,93 @@ function AuditTrailPanel() {
           </div>
         ))}
       </div>
+    </AdminCard>
+  );
+}
+
+function ScoringRulesPanel() {
+  const { data: rule, isLoading } = useScoringRule();
+  const updateRule = useUpdateScoringRule();
+  const [saved, setSaved] = useState(false);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    await updateRule.mutateAsync({
+      exact_score_points: Number(form.get("exact_score_points") || 0),
+      winner_points: Number(form.get("winner_points") || 0),
+      draw_points: Number(form.get("draw_points") || 0),
+      goal_difference_points: Number(form.get("goal_difference_points") || 0),
+      team_score_points: Number(form.get("team_score_points") || 0),
+      underdog_bonus_points: Number(form.get("underdog_bonus_points") || 0),
+      lock_minutes_before_match: Number(form.get("lock_minutes_before_match") || 0),
+    });
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 2500);
+  };
+
+  return (
+    <AdminCard title="Regras de pontuação" icon={SlidersHorizontal}>
+      {isLoading && <div className="text-sm text-muted-foreground">Carregando regras...</div>}
+      {rule && (
+        <form key={rule.updated_at} onSubmit={(event) => void submit(event)} className="space-y-5">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <RuleNumberInput
+              label="Placar exato"
+              name="exact_score_points"
+              defaultValue={rule.exact_score_points}
+            />
+            <RuleNumberInput
+              label="Vencedor"
+              name="winner_points"
+              defaultValue={rule.winner_points}
+            />
+            <RuleNumberInput
+              label="Empate"
+              name="draw_points"
+              defaultValue={rule.draw_points}
+            />
+            <RuleNumberInput
+              label="Saldo de gols"
+              name="goal_difference_points"
+              defaultValue={rule.goal_difference_points}
+            />
+            <RuleNumberInput
+              label="Placar de um time"
+              name="team_score_points"
+              defaultValue={rule.team_score_points}
+            />
+            <RuleNumberInput
+              label="Bônus por zebra"
+              name="underdog_bonus_points"
+              defaultValue={rule.underdog_bonus_points}
+            />
+            <RuleNumberInput
+              label="Fechar antes do jogo"
+              name="lock_minutes_before_match"
+              defaultValue={rule.lock_minutes_before_match}
+              suffix="min"
+            />
+          </div>
+
+          <div className="flex flex-col gap-3 border-t border-border pt-4 md:flex-row md:items-center md:justify-between">
+            <div className="text-xs text-muted-foreground">
+              Atualizado em {formatDateTime(rule.updated_at)}. Alterações valem para novos recálculos.
+            </div>
+            <div className="flex items-center gap-3">
+              {saved && <span className="text-xs font-medium text-success">Regras salvas.</span>}
+              <button
+                type="submit"
+                disabled={updateRule.isPending}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-brand px-4 py-2 text-sm font-semibold text-white shadow-glow disabled:opacity-40"
+              >
+                <SlidersHorizontal className="size-4" />
+                {updateRule.isPending ? "Salvando..." : "Salvar regras"}
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
     </AdminCard>
   );
 }
@@ -1007,19 +1098,55 @@ function ResultForm() {
 function AdminCard({
   title,
   icon: Icon,
+  action,
   children,
 }: {
   title: string;
   icon: typeof Shield;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="glass rounded-2xl p-6">
-      <h2 className="font-display font-bold text-lg flex items-center gap-2 mb-5">
-        <Icon className="size-5 text-primary" /> {title}
-      </h2>
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <h2 className="font-display flex items-center gap-2 text-lg font-bold">
+          <Icon className="size-5 text-primary" /> {title}
+        </h2>
+        {action}
+      </div>
       {children}
     </section>
+  );
+}
+
+function RuleNumberInput({
+  label,
+  name,
+  defaultValue,
+  suffix = "pts",
+}: {
+  label: string;
+  name: string;
+  defaultValue: number;
+  suffix?: string;
+}) {
+  return (
+    <label className="rounded-xl border border-border bg-background/45 p-4">
+      <span className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+      <div className="mt-3 flex items-center gap-2">
+        <input
+          name={name}
+          type="number"
+          min={0}
+          max={1440}
+          defaultValue={defaultValue}
+          className="h-10 w-full rounded-lg border border-border bg-background/70 px-3 text-sm font-semibold text-foreground focus:border-primary focus:outline-none"
+        />
+        <span className="min-w-8 text-xs text-muted-foreground">{suffix}</span>
+      </div>
+    </label>
   );
 }
 
@@ -1203,6 +1330,7 @@ function auditActionLabel(action: string) {
     "whatsapp.scheduler_reminders_sent": "Lembretes automáticos enviados",
     "whatsapp.result_sent": "Resultado enviado no WhatsApp",
     "whatsapp.ranking_sent": "Ranking enviado no WhatsApp",
+    "scoring.rule_updated": "Regra de pontuação alterada",
   };
   return labels[action] ?? action;
 }

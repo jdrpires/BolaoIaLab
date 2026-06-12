@@ -144,6 +144,21 @@ class Notification(TimestampMixin, Base):
     user: Mapped[User] = relationship(lazy="selectin")
 
 
+class ScoringRule(TimestampMixin, Base):
+    __tablename__ = "scoring_rules"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(120), default="default", nullable=False, unique=True)
+    exact_score_points: Mapped[int] = mapped_column(Integer, default=10, nullable=False)
+    winner_points: Mapped[int] = mapped_column(Integer, default=4, nullable=False)
+    draw_points: Mapped[int] = mapped_column(Integer, default=4, nullable=False)
+    goal_difference_points: Mapped[int] = mapped_column(Integer, default=2, nullable=False)
+    team_score_points: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    underdog_bonus_points: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    lock_minutes_before_match: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
+
+
 class AuditEvent(TimestampMixin, Base):
     __tablename__ = "audit_events"
 

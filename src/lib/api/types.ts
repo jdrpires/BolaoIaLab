@@ -231,6 +231,30 @@ export type ApiAuditEvent = {
   created_at: string;
 };
 
+export type ApiScoringRule = {
+  id: string;
+  name: string;
+  exact_score_points: number;
+  winner_points: number;
+  draw_points: number;
+  goal_difference_points: number;
+  team_score_points: number;
+  underdog_bonus_points: number;
+  lock_minutes_before_match: number;
+  is_active: boolean;
+  updated_at: string;
+};
+
+export type UpdateScoringRulePayload = {
+  exact_score_points: number;
+  winner_points: number;
+  draw_points: number;
+  goal_difference_points: number;
+  team_score_points: number;
+  underdog_bonus_points: number;
+  lock_minutes_before_match: number;
+};
+
 export type ApiStatisticsOverview = {
   kpis: {
     participants: number;

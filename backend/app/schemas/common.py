@@ -205,6 +205,30 @@ class AuditEventRead(ApiModel):
     created_at: datetime
 
 
+class ScoringRuleRead(ApiModel):
+    id: UUID
+    name: str
+    exact_score_points: int
+    winner_points: int
+    draw_points: int
+    goal_difference_points: int
+    team_score_points: int
+    underdog_bonus_points: int
+    lock_minutes_before_match: int
+    is_active: bool
+    updated_at: datetime
+
+
+class ScoringRuleUpdate(BaseModel):
+    exact_score_points: int = Field(ge=0, le=100)
+    winner_points: int = Field(ge=0, le=100)
+    draw_points: int = Field(ge=0, le=100)
+    goal_difference_points: int = Field(ge=0, le=100)
+    team_score_points: int = Field(ge=0, le=100)
+    underdog_bonus_points: int = Field(ge=0, le=100)
+    lock_minutes_before_match: int = Field(ge=0, le=1440)
+
+
 class StatisticsKpis(BaseModel):
     participants: int
     companies: int

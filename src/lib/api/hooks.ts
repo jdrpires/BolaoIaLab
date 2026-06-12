@@ -12,6 +12,7 @@ import type {
   ApiOperationalHealth,
   ApiPrediction,
   ApiRoundFeed,
+  ApiScoringRule,
   ApiStatisticsOverview,
   ApiTeam,
   ApiUser,
@@ -24,6 +25,7 @@ import type {
   UpdateMatchPayload,
   UpdateMyNotificationPreferencesPayload,
   UpdateMyPhonePayload,
+  UpdateScoringRulePayload,
   UpdateTeamPayload,
   UpdateUserPayload,
   SyncFixturesPayload,
@@ -41,6 +43,7 @@ export const apiKeys = {
   users: ["users"] as const,
   notifications: ["notifications"] as const,
   auditEvents: ["admin", "audit-events"] as const,
+  scoringRule: ["admin", "scoring-rule"] as const,
   operationalHealth: ["admin", "health"] as const,
   statistics: ["statistics"] as const,
   roundFeed: ["statistics", "round-feed"] as const,
@@ -148,6 +151,28 @@ export function useAuditEvents(limit = 80) {
     enabled: Boolean(getAccessToken()),
     staleTime: 15_000,
     retry: false,
+  });
+}
+
+export function useScoringRule() {
+  return useQuery({
+    queryKey: apiKeys.scoringRule,
+    queryFn: () => apiGet<ApiScoringRule>("/admin/scoring-rule"),
+    enabled: Boolean(getAccessToken()),
+    staleTime: 30_000,
+    retry: false,
+  });
+}
+
+export function useUpdateScoringRule() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpdateScoringRulePayload) =>
+      apiPatch<ApiScoringRule>("/admin/scoring-rule", payload),
+    onSuccess: async (rule) => {
+      queryClient.setQueryData(apiKeys.scoringRule, rule);
+      await queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents });
+    },
   });
 }
 
