@@ -47,6 +47,10 @@ class UserCompanyUpdate(BaseModel):
     company_id: UUID
 
 
+class UserPhoneUpdate(BaseModel):
+    phone_number: str | None = Field(default=None, max_length=32)
+
+
 class TeamCreate(BaseModel):
     name: str
     short_name: str

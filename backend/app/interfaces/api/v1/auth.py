@@ -11,7 +11,7 @@ from app.infrastructure.db.session import get_session
 from app.infrastructure.external.google_oauth import GoogleOAuthClient
 from app.infrastructure.security.jwt import create_access_token
 from app.interfaces.api.dependencies import get_current_user
-from app.schemas.common import TokenRead, UserCompanyUpdate, UserRead
+from app.schemas.common import TokenRead, UserCompanyUpdate, UserPhoneUpdate, UserRead
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -80,3 +80,22 @@ async def update_my_company(
     await session.commit()
     await session.refresh(user)
     return user
+
+
+@router.patch("/me/phone", response_model=UserRead)
+async def update_my_phone(
+    payload: UserPhoneUpdate,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> User:
+    user.phone_number = _normalize_phone(payload.phone_number)
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
+def _normalize_phone(phone_number: str | None) -> str | None:
+    if not phone_number:
+        return None
+    digits = "".join(character for character in phone_number if character.isdigit())
+    return digits or None

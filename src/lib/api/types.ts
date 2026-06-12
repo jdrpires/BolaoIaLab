@@ -106,6 +106,10 @@ export type UpdateMyCompanyPayload = {
   company_id: string;
 };
 
+export type UpdateMyPhonePayload = {
+  phone_number: string | null;
+};
+
 export type UpdateCompanyPayload = Partial<CreateCompanyPayload> & {
   is_active?: boolean;
 };

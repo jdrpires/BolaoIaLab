@@ -20,6 +20,7 @@ import type {
   UpdateMyCompanyPayload,
   UpdateCompanyPayload,
   UpdateMatchPayload,
+  UpdateMyPhonePayload,
   UpdateTeamPayload,
   UpdateUserPayload,
   SyncFixturesPayload,
@@ -135,6 +136,16 @@ export function useUpdateMyCompany() {
     onSuccess: async (user) => {
       queryClient.setQueryData(apiKeys.me, user);
       await queryClient.invalidateQueries({ queryKey: apiKeys.companyRanking });
+    },
+  });
+}
+
+export function useUpdateMyPhone() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpdateMyPhonePayload) => apiPatch<ApiUser>("/auth/me/phone", payload),
+    onSuccess: async (user) => {
+      queryClient.setQueryData(apiKeys.me, user);
     },
   });
 }

@@ -14,6 +14,7 @@ import { clearAccessToken, startGoogleLogin } from "@/lib/api/client";
 import { initials } from "@/lib/api/format";
 import { useMe } from "@/lib/api/hooks";
 import { CompanyOnboarding } from "@/components/CompanyOnboarding";
+import { ProfileOnboarding } from "@/components/ProfileOnboarding";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -129,6 +130,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </header>
         <main className="p-5 lg:p-10 max-w-7xl mx-auto">
           <CompanyOnboarding />
+          <ProfileOnboarding />
           {children}
         </main>
       </div>
