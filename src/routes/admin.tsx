@@ -9,6 +9,7 @@ import {
   useCompanies,
   useMatches,
   useNotifications,
+  useOperationalHealth,
   useRecalculateMatch,
   useSendMatchReminder,
   useSendMatchResult,
@@ -25,12 +26,23 @@ import {
   useUsers,
 } from "@/lib/api/hooks";
 import { formatMatchDate, formatMatchTime } from "@/lib/api/format";
-import type { ApiCompany, ApiFixtureSyncResult, ApiMatch, ApiTeam, ApiUser } from "@/lib/api/types";
+import type {
+  ApiCompany,
+  ApiFixtureSyncResult,
+  ApiMatch,
+  ApiTeam,
+  ApiUser,
+} from "@/lib/api/types";
 import {
+  Activity,
+  AlertTriangle,
   Bell,
+  Bot,
   Building2,
   CalendarPlus,
   CloudDownload,
+  Database,
+  HeartPulse,
   History,
   RefreshCw,
   Send,
@@ -60,6 +72,8 @@ function AdminPage() {
           </p>
         </div>
 
+        <OperationalHealthPanel />
+
         <div className="grid xl:grid-cols-2 gap-5">
           <CompanyForm />
           <TeamForm />
@@ -78,6 +92,144 @@ function AdminPage() {
         </div>
       </AuthGate>
     </AppLayout>
+  );
+}
+
+function OperationalHealthPanel() {
+  const { data, isLoading, refetch, isFetching } = useOperationalHealth();
+
+  const cards = [
+    {
+      label: "API",
+      value: data?.api.status ?? "online",
+      detail: data?.api.environment ?? "local",
+      healthy: data?.api.status === "online",
+      icon: HeartPulse,
+    },
+    {
+      label: "WhatsApp",
+      value: data?.whatsapp.connected ? "conectado" : data?.whatsapp.status ?? "indisponível",
+      detail: data?.whatsapp.provider ?? "baileys",
+      healthy: Boolean(data?.whatsapp.connected),
+      icon: Bell,
+    },
+    {
+      label: "Scheduler",
+      value: data?.scheduler.enabled ? "ativo" : "pausado",
+      detail: data ? `${data.scheduler.interval_seconds}s · janela ${data.scheduler.window_minutes}min` : "carregando",
+      healthy: Boolean(data?.scheduler.enabled),
+      icon: Activity,
+    },
+    {
+      label: "API-Football",
+      value: data?.api_football.status === "synced" ? "sincronizada" : "pendente",
+      detail: data?.api_football.last_sync_at
+        ? formatDateTime(data.api_football.last_sync_at)
+        : data?.api_football.detail ?? "sem sync",
+      healthy: data?.api_football.status === "synced",
+      icon: Database,
+    },
+    {
+      label: "OpenAI",
+      value: data?.openai.status === "generated" ? "com análises" : "sem análise",
+      detail: data?.openai.last_analysis_at
+        ? `${formatDateTime(data.openai.last_analysis_at)} · ${data.openai.model ?? "modelo"}`
+        : data?.openai.detail ?? "sem análise",
+      healthy: data?.openai.status === "generated",
+      icon: Bot,
+    },
+  ];
+
+  return (
+    <section className="glass mb-6 rounded-2xl p-6">
+      <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="font-display flex items-center gap-2 text-xl font-bold">
+            <HeartPulse className="size-5 text-primary" /> Saúde operacional
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Status das integrações críticas e sinais recentes da operação.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          disabled={isFetching}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary/15 px-3 py-2 text-sm font-medium text-primary disabled:opacity-40"
+        >
+          <RefreshCw className={`size-4 ${isFetching ? "animate-spin" : ""}`} />
+          Atualizar
+        </button>
+      </div>
+
+      {isLoading && (
+        <div className="rounded-xl bg-background/45 p-4 text-sm text-muted-foreground">
+          Carregando saúde operacional...
+        </div>
+      )}
+
+      {data && (
+        <>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            {cards.map(({ label, value, detail, healthy, icon: Icon }) => (
+              <div key={label} className="rounded-xl border border-border bg-background/45 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className={`grid size-9 place-items-center rounded-lg ${healthy ? "bg-success/15 text-success" : "bg-warning/15 text-warning"}`}>
+                    <Icon className="size-4" />
+                  </div>
+                  <span className={`rounded-full px-2 py-1 text-[10px] uppercase tracking-wider ${healthy ? "bg-success/15 text-success" : "bg-warning/15 text-warning"}`}>
+                    {healthy ? "ok" : "atenção"}
+                  </span>
+                </div>
+                <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
+                <div className="mt-1 text-lg font-bold">{value}</div>
+                <div className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">{detail}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="rounded-xl bg-background/45 p-4">
+              <div className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">
+                Últimos sinais
+              </div>
+              <div className="grid gap-2 md:grid-cols-3">
+                <Signal label="Última sync" value={data.api_football.last_sync_at ? formatDateTime(data.api_football.last_sync_at) : "Sem registro"} />
+                <Signal label="Última IA" value={data.openai.last_analysis_at ? formatDateTime(data.openai.last_analysis_at) : "Sem registro"} />
+                <Signal label="Scheduler" value={data.scheduler.last_run_evidence_at ? formatDateTime(data.scheduler.last_run_evidence_at) : "Sem envio ainda"} />
+              </div>
+            </div>
+            <div className="rounded-xl bg-background/45 p-4">
+              <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+                <AlertTriangle className="size-4 text-warning" /> Últimos erros
+              </div>
+              {data.errors.length === 0 ? (
+                <div className="text-sm text-muted-foreground">Nenhum erro recente registrado.</div>
+              ) : (
+                <div className="space-y-2">
+                  {data.errors.slice(0, 3).map((error) => (
+                    <div key={`${error.created_at}-${error.destination ?? error.message}`} className="rounded-lg bg-background/50 p-3">
+                      <div className="text-xs font-semibold text-warning">{error.status}</div>
+                      <div className="line-clamp-2 text-xs text-muted-foreground">{error.message}</div>
+                      <div className="mt-1 text-[10px] text-muted-foreground">{formatDateTime(error.created_at)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function Signal({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg bg-background/50 p-3">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="mt-1 text-sm font-semibold">{value}</div>
+    </div>
   );
 }
 
@@ -979,4 +1131,13 @@ function toDatetimeLocal(value: string) {
   const offset = date.getTimezoneOffset();
   const local = new Date(date.getTime() - offset * 60_000);
   return local.toISOString().slice(0, 16);
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }

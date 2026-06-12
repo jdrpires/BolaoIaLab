@@ -8,6 +8,7 @@ import type {
   ApiIndividualRanking,
   ApiMatch,
   ApiNotification,
+  ApiOperationalHealth,
   ApiPrediction,
   ApiRoundFeed,
   ApiStatisticsOverview,
@@ -38,6 +39,7 @@ export const apiKeys = {
     ["rankings", "round", stage ?? "current", limit] as const,
   users: ["users"] as const,
   notifications: ["notifications"] as const,
+  operationalHealth: ["admin", "health"] as const,
   statistics: ["statistics"] as const,
   roundFeed: ["statistics", "round-feed"] as const,
   me: ["auth", "me"] as const,
@@ -121,6 +123,16 @@ export function useNotifications() {
   return useQuery({
     queryKey: apiKeys.notifications,
     queryFn: () => apiGet<ApiNotification[]>("/notifications?limit=80"),
+    enabled: Boolean(getAccessToken()),
+    staleTime: 15_000,
+    retry: false,
+  });
+}
+
+export function useOperationalHealth() {
+  return useQuery({
+    queryKey: apiKeys.operationalHealth,
+    queryFn: () => apiGet<ApiOperationalHealth>("/admin/health"),
     enabled: Boolean(getAccessToken()),
     staleTime: 15_000,
     retry: false,

@@ -169,6 +169,53 @@ export type ApiNotification = {
   created_at: string;
 };
 
+export type ApiOperationalHealth = {
+  checked_at: string;
+  api: {
+    status: string;
+    environment: string;
+  };
+  whatsapp: {
+    status: string;
+    connected: boolean;
+    provider: string;
+    has_qr?: boolean;
+    detail?: string;
+  };
+  scheduler: {
+    status: string;
+    enabled: boolean;
+    interval_seconds: number;
+    window_minutes: number;
+    last_run_evidence_at: string | null;
+    last_notification_status: string | null;
+  };
+  api_football: {
+    status: string;
+    last_sync_at: string | null;
+    fixture_id?: string | null;
+    league?: string | null;
+    round?: string | null;
+    detail?: string;
+  };
+  openai: {
+    status: string;
+    last_analysis_at: string | null;
+    provider?: string;
+    model?: string;
+    confidence?: number;
+    match_id?: string;
+    detail?: string;
+  };
+  errors: Array<{
+    type: string;
+    status: string;
+    message: string;
+    created_at: string;
+    destination?: string;
+  }>;
+};
+
 export type ApiStatisticsOverview = {
   kpis: {
     participants: number;
