@@ -233,9 +233,42 @@ export type ApiGameAnalysis = {
   payload: {
     probabilities?: {
       home?: number;
+      home_win?: number;
       draw?: number;
       away?: number;
+      away_win?: number;
+    };
+    conservative_prediction?: ApiAnalysisPrediction;
+    bold_prediction?: ApiAnalysisPrediction;
+    upset_risk?: {
+      level?: string;
+      percentage?: number;
+      rationale?: string;
+    };
+    factors?: Array<{
+      title?: string;
+      impact?: string;
+      explanation?: string;
+    }>;
+    data_sources?: {
+      api_football?: boolean;
+      fixture?: boolean;
+      statistics?: boolean;
+      ai_inference?: boolean;
+    };
+    sports_data_available?: {
+      api_football?: boolean;
+      fixture?: boolean;
+      statistics?: boolean;
+      statistics_teams?: number;
     };
     [key: string]: unknown;
   };
+};
+
+export type ApiAnalysisPrediction = {
+  label?: string;
+  home_score?: number;
+  away_score?: number;
+  rationale?: string;
 };

@@ -5,9 +5,21 @@ import { TeamLogo } from "@/components/TeamLogo";
 import { getAccessToken, startGoogleLogin } from "@/lib/api/client";
 import { formatMatchDate, formatMatchTime } from "@/lib/api/format";
 import { useGenerateMatchAnalysis, useMatchAnalysis, useMatches } from "@/lib/api/hooks";
-import type { ApiGameAnalysis, ApiMatch, ApiTeam } from "@/lib/api/types";
-import { Activity, Brain, RefreshCw, Sparkles, Target, TrendingUp } from "lucide-react";
-import { Bar, BarChart, Cell, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import type { ApiAnalysisPrediction, ApiGameAnalysis, ApiMatch, ApiTeam } from "@/lib/api/types";
+import type { ReactNode } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  Brain,
+  Database,
+  Gauge,
+  ListChecks,
+  RefreshCw,
+  Rocket,
+  ShieldCheck,
+  Sparkles,
+  Target,
+} from "lucide-react";
 
 export const Route = createFileRoute("/ia")({
   validateSearch: (s: Record<string, unknown>) => ({ match: (s.match as string) || "" }),
@@ -77,9 +89,11 @@ function IAPage() {
               analysis={analysis}
               loading={analysisLoading || generateAnalysis.isPending}
             />
-            <StatsCard match={match} />
+            <PredictionVariantCards match={match} analysis={analysis} />
+            <RiskCard analysis={analysis} />
+            <FactorsCard analysis={analysis} />
+            <StatsCard match={match} analysis={analysis} />
             <InsightCard match={match} analysis={analysis} />
-            <ScenarioCard analysis={analysis} />
           </div>
         )}
       </AuthGate>
@@ -105,10 +119,14 @@ function SuggestionCard({
   analysis?: ApiGameAnalysis;
   loading: boolean;
 }) {
-  const confidence = Math.round(Number(analysis?.confidence ?? 0));
-  const homeProb = Math.round(Number(analysis?.payload?.probabilities?.home ?? 34));
-  const drawProb = Math.round(Number(analysis?.payload?.probabilities?.draw ?? 32));
-  const awayProb = Math.round(Number(analysis?.payload?.probabilities?.away ?? 34));
+  const confidence = toPercent(analysis?.confidence ?? 0);
+  const homeProb = toPercent(
+    analysis?.payload?.probabilities?.home ?? analysis?.payload?.probabilities?.home_win ?? 34,
+  );
+  const drawProb = toPercent(analysis?.payload?.probabilities?.draw ?? 32);
+  const awayProb = toPercent(
+    analysis?.payload?.probabilities?.away ?? analysis?.payload?.probabilities?.away_win ?? 34,
+  );
 
   return (
     <div className="lg:col-span-1 glass rounded-2xl p-6 relative overflow-hidden">
@@ -159,18 +177,170 @@ function SuggestionCard({
   );
 }
 
-function StatsCard({ match }: { match: ApiMatch }) {
-  const xgData = [
-    { metric: "xG", h: 1.5, a: 1.2 },
-    { metric: "Posse", h: 52, a: 48 },
-    { metric: "Finalizações", h: 11, a: 9 },
-    { metric: "Chances claras", h: 3, a: 2 },
+function PredictionVariantCards({
+  match,
+  analysis,
+}: {
+  match: ApiMatch;
+  analysis?: ApiGameAnalysis;
+}) {
+  const conservative = normalizePrediction(analysis?.payload?.conservative_prediction, {
+    label: "Palpite conservador",
+    home_score: analysis?.suggested_home_score ?? 1,
+    away_score: analysis?.suggested_away_score ?? 1,
+    rationale: "Cenário mais seguro com base na probabilidade principal da análise.",
+  });
+  const bold = normalizePrediction(analysis?.payload?.bold_prediction, {
+    label: "Palpite ousado",
+    home_score: Math.max(0, (analysis?.suggested_home_score ?? 1) + 1),
+    away_score: analysis?.suggested_away_score ?? 0,
+    rationale: "Cenário de maior retorno caso o time com leve vantagem consiga impor ritmo.",
+  });
+
+  return (
+    <div className="lg:col-span-2 grid md:grid-cols-2 gap-5">
+      <PredictionCard
+        icon={<ShieldCheck className="size-5 text-success" />}
+        tone="success"
+        title={conservative.label || "Palpite conservador"}
+        prediction={conservative}
+        home={match.home_team.short_name}
+        away={match.away_team.short_name}
+      />
+      <PredictionCard
+        icon={<Rocket className="size-5 text-primary" />}
+        tone="primary"
+        title={bold.label || "Palpite ousado"}
+        prediction={bold}
+        home={match.home_team.short_name}
+        away={match.away_team.short_name}
+      />
+    </div>
+  );
+}
+
+function PredictionCard({
+  icon,
+  tone,
+  title,
+  prediction,
+  home,
+  away,
+}: {
+  icon: ReactNode;
+  tone: "primary" | "success";
+  title: string;
+  prediction: Required<ApiAnalysisPrediction>;
+  home: string;
+  away: string;
+}) {
+  const toneClass = tone === "success" ? "bg-success/15 text-success" : "bg-primary/15 text-primary";
+  return (
+    <div className="glass rounded-2xl p-6">
+      <div className="flex items-center gap-3 mb-5">
+        <div className={`grid size-10 place-items-center rounded-lg ${toneClass}`}>{icon}</div>
+        <div>
+          <h2 className="font-display font-bold text-lg">{title}</h2>
+          <p className="text-xs text-muted-foreground">
+            {home} x {away}
+          </p>
+        </div>
+      </div>
+      <div className="rounded-xl bg-background/50 p-5 text-center">
+        <div className="text-5xl font-display font-bold">
+          {prediction.home_score}
+          <span className="mx-3 text-2xl text-muted-foreground">×</span>
+          {prediction.away_score}
+        </div>
+      </div>
+      <p className="mt-4 text-sm leading-6 text-muted-foreground">{prediction.rationale}</p>
+    </div>
+  );
+}
+
+function RiskCard({ analysis }: { analysis?: ApiGameAnalysis }) {
+  const risk = analysis?.payload?.upset_risk;
+  const level = String(risk?.level ?? "médio");
+  const percentage = toPercent(risk?.percentage ?? 30);
+  const rationale =
+    risk?.rationale ??
+    "A zebra depende de variáveis de baixa previsibilidade, como escalação, momento do jogo e eficiência nas poucas chances.";
+
+  return (
+    <div className="glass rounded-2xl p-6">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="grid size-10 place-items-center rounded-lg bg-warning/15 text-warning">
+          <AlertTriangle className="size-5" />
+        </div>
+        <div>
+          <h2 className="font-display font-bold text-lg">Risco de zebra</h2>
+          <p className="text-xs text-muted-foreground">Probabilidade de roteiro fora do esperado.</p>
+        </div>
+      </div>
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <div className="text-4xl font-display font-bold">{percentage}%</div>
+          <div className="mt-1 text-xs uppercase tracking-[0.2em] text-warning">{level}</div>
+        </div>
+        <Gauge className="size-12 text-muted-foreground" />
+      </div>
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-background/60">
+        <div className="h-full bg-warning" style={{ width: `${Math.min(100, percentage)}%` }} />
+      </div>
+      <p className="mt-4 text-sm leading-6 text-muted-foreground">{rationale}</p>
+    </div>
+  );
+}
+
+function FactorsCard({ analysis }: { analysis?: ApiGameAnalysis }) {
+  const factors = normalizeFactors(analysis);
+
+  return (
+    <div className="lg:col-span-2 glass rounded-2xl p-6">
+      <h2 className="font-display font-bold text-lg flex items-center gap-2 mb-5">
+        <ListChecks className="size-5 text-primary" /> Fatores da análise
+      </h2>
+      <div className="grid gap-3 md:grid-cols-2">
+        {factors.map((factor) => (
+          <div key={factor.title} className="rounded-xl border border-border bg-background/40 p-4">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h3 className="font-semibold">{factor.title}</h3>
+              <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] uppercase tracking-wider text-primary">
+                {factor.impact}
+              </span>
+            </div>
+            <p className="text-sm leading-6 text-muted-foreground">{factor.explanation}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StatsCard({ match, analysis }: { match: ApiMatch; analysis?: ApiGameAnalysis }) {
+  const availability = analysis?.payload?.sports_data_available;
+  const dataSources = analysis?.payload?.data_sources;
+  const hasApiFootball = Boolean(availability?.api_football || dataSources?.api_football);
+  const hasStats = Boolean(availability?.statistics || dataSources?.statistics);
+  const sourceItems = [
+    {
+      label: "Fixture API-Football",
+      active: Boolean(availability?.fixture || dataSources?.fixture),
+    },
+    {
+      label: "Estatísticas reais",
+      active: hasStats,
+    },
+    {
+      label: "Inferência IA",
+      active: Boolean(dataSources?.ai_inference ?? analysis),
+    },
   ];
 
   return (
     <div className="lg:col-span-2 glass rounded-2xl p-6">
       <h2 className="font-display font-bold text-lg flex items-center gap-2 mb-5">
-        <Activity className="size-5 text-primary" /> Contexto esportivo
+        <Activity className="size-5 text-primary" /> Dados esportivos usados
       </h2>
       <div className="grid md:grid-cols-2 gap-4 mb-6">
         {[match.home_team, match.away_team].map((team) => (
@@ -188,29 +358,29 @@ function StatsCard({ match }: { match: ApiMatch }) {
 
       <div className="pt-6 border-t border-border">
         <h3 className="font-display font-bold text-sm mb-4 flex items-center gap-2">
-          <TrendingUp className="size-4 text-primary" /> Estatísticas base
+          <Database className="size-4 text-primary" /> Fontes disponíveis
         </h3>
-        <div className="space-y-3">
-          {xgData.map((row) => {
-            const total = row.h + row.a;
-            const hp = (row.h / total) * 100;
-            return (
-              <div key={row.metric}>
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="font-bold">{row.h}</span>
-                  <span className="text-muted-foreground uppercase tracking-wider text-[10px]">
-                    {row.metric}
-                  </span>
-                  <span className="font-bold">{row.a}</span>
-                </div>
-                <div className="h-2 rounded-full bg-background/60 overflow-hidden flex">
-                  <div className="h-full bg-gradient-brand" style={{ width: `${hp}%` }} />
-                  <div className="h-full bg-muted" style={{ width: `${100 - hp}%` }} />
-                </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {sourceItems.map((item) => (
+            <div key={item.label} className="rounded-lg bg-background/50 p-3">
+              <div className={`text-sm font-semibold ${item.active ? "text-success" : "text-muted-foreground"}`}>
+                {item.active ? "Disponível" : "Não disponível"}
               </div>
-            );
-          })}
+              <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                {item.label}
+              </div>
+            </div>
+          ))}
         </div>
+        <p className="mt-4 text-sm leading-6 text-muted-foreground">
+          {hasStats
+            ? `A análise considerou estatísticas reais da API-Football${
+                availability?.statistics_teams ? ` para ${availability.statistics_teams} times` : ""
+              }.`
+            : hasApiFootball
+              ? "A análise encontrou a fixture na API-Football, mas ainda não recebeu estatísticas detalhadas desse jogo."
+              : "Este jogo ainda não possui dados reais da API-Football vinculados; a IA usa contexto do confronto e inferência."}
+        </p>
       </div>
     </div>
   );
@@ -220,66 +390,25 @@ function InsightCard({ match, analysis }: { match: ApiMatch; analysis?: ApiGameA
   return (
     <div className="lg:col-span-3 glass rounded-2xl p-6">
       <h2 className="font-display font-bold text-lg flex items-center gap-2 mb-4">
-        <Target className="size-5 text-primary" /> Insight da IA
+        <Target className="size-5 text-primary" /> Resumo executivo
       </h2>
-      <p className="text-sm leading-relaxed text-muted-foreground">
-        {analysis?.summary ?? (
-          <>
-            Clique em <span className="text-foreground font-medium">Gerar análise IA</span> para
-            criar uma leitura do confronto {match.home_team.name} vs {match.away_team.name}.
-          </>
-        )}
-      </p>
+      <div className="rounded-xl bg-background/45 p-5">
+        <p className="text-sm leading-7 text-muted-foreground">
+          {analysis?.summary ?? (
+            <>
+              Clique em <span className="text-foreground font-medium">Gerar análise IA</span> para
+              criar uma leitura em cards do confronto {match.home_team.name} vs {match.away_team.name}.
+            </>
+          )}
+        </p>
+      </div>
       {analysis && (
-        <div className="mt-4 text-[11px] uppercase tracking-wider text-muted-foreground">
-          Fonte: {analysis.provider} · Modelo: {analysis.model}
+        <div className="mt-4 flex flex-wrap gap-2 text-[11px] uppercase tracking-wider text-muted-foreground">
+          <span>Fonte: {analysis.provider}</span>
+          <span>·</span>
+          <span>Modelo: {analysis.model}</span>
         </div>
       )}
-    </div>
-  );
-}
-
-function ScenarioCard({ analysis }: { analysis?: ApiGameAnalysis }) {
-  const data = analysis
-    ? [
-        {
-          score: `${analysis.suggested_home_score}x${analysis.suggested_away_score}`,
-          prob: Math.round(Number(analysis.confidence)),
-        },
-        { score: "1x1", prob: 18 },
-        { score: "2x1", prob: 14 },
-        { score: "1x0", prob: 11 },
-      ]
-    : [{ score: "Aguardando", prob: 0 }];
-
-  return (
-    <div className="lg:col-span-3 glass rounded-2xl p-6">
-      <h2 className="font-display font-bold text-lg mb-5">Cenários alternativos prováveis</h2>
-      <div className="h-64 w-full">
-        <ResponsiveContainer>
-          <BarChart data={data}>
-            <XAxis
-              dataKey="score"
-              stroke="oklch(0.72 0.03 270)"
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-            />
-            <YAxis
-              stroke="oklch(0.72 0.03 270)"
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-              unit="%"
-            />
-            <Bar dataKey="prob" radius={[8, 8, 0, 0]}>
-              {data.map((_, i) => (
-                <Cell key={i} fill={i === 0 ? "oklch(0.78 0.2 150)" : "oklch(0.65 0.24 295)"} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
     </div>
   );
 }
@@ -295,4 +424,58 @@ function TeamMini({ team }: { team: ApiTeam }) {
 
 function PanelMessage({ text }: { text: string }) {
   return <div className="glass rounded-2xl p-6 text-sm text-muted-foreground">{text}</div>;
+}
+
+function normalizePrediction(
+  value: ApiAnalysisPrediction | undefined,
+  fallback: Required<ApiAnalysisPrediction>,
+): Required<ApiAnalysisPrediction> {
+  return {
+    label: value?.label || fallback.label,
+    home_score: Number.isFinite(value?.home_score) ? Number(value?.home_score) : fallback.home_score,
+    away_score: Number.isFinite(value?.away_score) ? Number(value?.away_score) : fallback.away_score,
+    rationale: value?.rationale || fallback.rationale,
+  };
+}
+
+function normalizeFactors(analysis?: ApiGameAnalysis) {
+  const factors = analysis?.payload?.factors ?? [];
+  if (factors.length > 0) {
+    return factors.map((factor, index) => ({
+      title: factor.title || `Fator ${index + 1}`,
+      impact: factor.impact || "neutro",
+      explanation:
+        factor.explanation ||
+        "A IA considerou este ponto na composição das probabilidades do confronto.",
+    }));
+  }
+
+  return [
+    {
+      title: "Probabilidade principal",
+      impact: "neutro",
+      explanation: "A leitura inicial combina favoritismo, empate e chance do visitante.",
+    },
+    {
+      title: "Dados reais",
+      impact: "neutro",
+      explanation: "Quando disponíveis, estatísticas da API-Football entram como base da análise.",
+    },
+    {
+      title: "Incerteza do jogo",
+      impact: "neutro",
+      explanation: "Escalações, momento da partida e eficiência nas finalizações podem mudar o cenário.",
+    },
+    {
+      title: "Mando e contexto",
+      impact: "casa",
+      explanation: "O mando de campo pode influenciar ritmo, pressão e controle emocional.",
+    },
+  ];
+}
+
+function toPercent(value: unknown) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.round(numeric <= 1 ? numeric * 100 : numeric);
 }

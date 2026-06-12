@@ -45,6 +45,7 @@ async def analyze_match(
         sports_payload = await ApiFootballClient().fixture_analysis_payload(match.external_fixture_id)
 
     payload = await OpenAIGameAnalysisClient().analyze(match, sports_payload)
+    payload["sports_data_available"] = _sports_data_available(sports_payload)
     settings = get_settings()
     analysis = GameAnalysis(
         match_id=match.id,
@@ -70,3 +71,14 @@ async def _latest_analysis(match_id: UUID, session: AsyncSession) -> GameAnalysi
         .limit(1)
     )
     return (await session.execute(statement)).scalar_one_or_none()
+
+
+def _sports_data_available(sports_payload: dict) -> dict:
+    fixture_response = sports_payload.get("fixture", {}).get("response", [])
+    statistics_response = sports_payload.get("statistics", {}).get("response", [])
+    return {
+        "api_football": bool(sports_payload),
+        "fixture": bool(fixture_response),
+        "statistics": bool(statistics_response),
+        "statistics_teams": len(statistics_response) if isinstance(statistics_response, list) else 0,
+    }
