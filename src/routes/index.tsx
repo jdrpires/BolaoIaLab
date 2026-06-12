@@ -94,6 +94,17 @@ function Landing() {
             Ver demonstração <ArrowRight className="size-4" />
           </Link>
         </div>
+        <p className="mt-4 text-xs text-muted-foreground">
+          Ao entrar, você concorda com os{" "}
+          <Link to="/termos" className="text-primary hover:underline">
+            Termos de Uso
+          </Link>{" "}
+          e com a{" "}
+          <Link to="/privacidade" className="text-primary hover:underline">
+            Política de Privacidade
+          </Link>
+          .
+        </p>
 
         {/* Floating stats */}
         <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
@@ -282,12 +293,30 @@ function Landing() {
             >
               <GoogleIcon /> Entrar com Google
             </button>
+            <p className="mt-4 text-xs text-muted-foreground">
+              Login Google, rankings e WhatsApp seguem nossos{" "}
+              <Link to="/termos" className="text-primary hover:underline">
+                Termos
+              </Link>{" "}
+              e{" "}
+              <Link to="/privacidade" className="text-primary hover:underline">
+                Privacidade
+              </Link>
+              .
+            </p>
           </div>
         </div>
       </section>
 
       <footer className="border-t border-border py-8 text-center text-xs text-muted-foreground">
-        © 2026 Copa Tech · Onovolab · AI Hub · Code Synergy
+        © 2026 Copa Tech · Onovolab · AI Hub · Code Synergy ·{" "}
+        <Link to="/termos" className="hover:text-foreground">
+          Termos
+        </Link>{" "}
+        ·{" "}
+        <Link to="/privacidade" className="hover:text-foreground">
+          Privacidade
+        </Link>
       </footer>
     </div>
   );

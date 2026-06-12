@@ -9,7 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermosRouteImport } from './routes/termos'
 import { Route as RankingRouteImport } from './routes/ranking'
+import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as PalpitesRouteImport } from './routes/palpites'
 import { Route as MinhaContaRouteImport } from './routes/minha-conta'
 import { Route as IaRouteImport } from './routes/ia'
@@ -20,9 +22,19 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 
+const TermosRoute = TermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RankingRoute = RankingRouteImport.update({
   id: '/ranking',
   path: '/ranking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacidadeRoute = PrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PalpitesRoute = PalpitesRouteImport.update({
@@ -80,7 +92,9 @@ export interface FileRoutesByFullPath {
   '/ia': typeof IaRoute
   '/minha-conta': typeof MinhaContaRoute
   '/palpites': typeof PalpitesRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/ranking': typeof RankingRoute
+  '/termos': typeof TermosRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
 export interface FileRoutesByTo {
@@ -92,7 +106,9 @@ export interface FileRoutesByTo {
   '/ia': typeof IaRoute
   '/minha-conta': typeof MinhaContaRoute
   '/palpites': typeof PalpitesRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/ranking': typeof RankingRoute
+  '/termos': typeof TermosRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
 export interface FileRoutesById {
@@ -105,7 +121,9 @@ export interface FileRoutesById {
   '/ia': typeof IaRoute
   '/minha-conta': typeof MinhaContaRoute
   '/palpites': typeof PalpitesRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/ranking': typeof RankingRoute
+  '/termos': typeof TermosRoute
   '/auth/callback': typeof AuthCallbackRoute
 }
 export interface FileRouteTypes {
@@ -119,7 +137,9 @@ export interface FileRouteTypes {
     | '/ia'
     | '/minha-conta'
     | '/palpites'
+    | '/privacidade'
     | '/ranking'
+    | '/termos'
     | '/auth/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -131,7 +151,9 @@ export interface FileRouteTypes {
     | '/ia'
     | '/minha-conta'
     | '/palpites'
+    | '/privacidade'
     | '/ranking'
+    | '/termos'
     | '/auth/callback'
   id:
     | '__root__'
@@ -143,7 +165,9 @@ export interface FileRouteTypes {
     | '/ia'
     | '/minha-conta'
     | '/palpites'
+    | '/privacidade'
     | '/ranking'
+    | '/termos'
     | '/auth/callback'
   fileRoutesById: FileRoutesById
 }
@@ -156,17 +180,33 @@ export interface RootRouteChildren {
   IaRoute: typeof IaRoute
   MinhaContaRoute: typeof MinhaContaRoute
   PalpitesRoute: typeof PalpitesRoute
+  PrivacidadeRoute: typeof PrivacidadeRoute
   RankingRoute: typeof RankingRoute
+  TermosRoute: typeof TermosRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/termos': {
+      id: '/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof TermosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ranking': {
       id: '/ranking'
       path: '/ranking'
       fullPath: '/ranking'
       preLoaderRoute: typeof RankingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacidade': {
+      id: '/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof PrivacidadeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/palpites': {
@@ -244,7 +284,9 @@ const rootRouteChildren: RootRouteChildren = {
   IaRoute: IaRoute,
   MinhaContaRoute: MinhaContaRoute,
   PalpitesRoute: PalpitesRoute,
+  PrivacidadeRoute: PrivacidadeRoute,
   RankingRoute: RankingRoute,
+  TermosRoute: TermosRoute,
   AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport

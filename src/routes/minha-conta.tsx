@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bell, Building2, Check, LogOut, MessageCircle, UserCircle } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
@@ -78,6 +78,17 @@ function MinhaConta() {
             <h1 className="text-3xl font-bold md:text-4xl">Minha Conta</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Atualize seus dados de participação e controle como quer receber os avisos do bolão.
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Consulte os{" "}
+              <Link to="/termos" className="text-primary hover:underline">
+                Termos de Uso
+              </Link>{" "}
+              e a{" "}
+              <Link to="/privacidade" className="text-primary hover:underline">
+                Política de Privacidade
+              </Link>
+              .
             </p>
           </div>
           <button

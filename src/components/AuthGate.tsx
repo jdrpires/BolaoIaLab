@@ -79,6 +79,17 @@ function GatePanel({
           {actionLabel}
         </Link>
       )}
+      <p className="mt-5 text-xs leading-5 text-muted-foreground">
+        Ao acessar, você aceita os{" "}
+        <Link to="/termos" className="text-primary hover:underline">
+          Termos de Uso
+        </Link>{" "}
+        e a{" "}
+        <Link to="/privacidade" className="text-primary hover:underline">
+          Política de Privacidade
+        </Link>
+        .
+      </p>
     </div>
   );
 }
