@@ -4,7 +4,7 @@ import { AuthGate } from "@/components/AuthGate";
 import { TeamLogo } from "@/components/TeamLogo";
 import { lastResults, stats } from "@/lib/mock-data";
 import { formatMatchDate, formatMatchTime, toRankingPlayer } from "@/lib/api/format";
-import { useIndividualRanking, useMatches } from "@/lib/api/hooks";
+import { useIndividualRanking, useMatches, useMe } from "@/lib/api/hooks";
 import type { ApiTeam } from "@/lib/api/types";
 import {
   TrendingUp,
@@ -54,9 +54,11 @@ const statCards = [
 ];
 
 function Dashboard() {
+  const { data: me } = useMe();
   const { data: apiMatches = [], isLoading: matchesLoading } = useMatches();
   const { data: apiRanking = [], isLoading: rankingLoading } = useIndividualRanking(5);
   const ranking = apiRanking.map(toRankingPlayer);
+  const firstName = me?.full_name?.split(" ")[0] || "participante";
 
   return (
     <AppLayout>
@@ -64,7 +66,7 @@ function Dashboard() {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
           <div>
             <div className="text-xs uppercase tracking-[0.25em] text-primary mb-2">
-              Bem-vinda, Juliana
+              Bem-vindo(a), {firstName}
             </div>
             <h1 className="text-3xl md:text-4xl font-bold">Sua Copa Tech começou 🏆</h1>
             <p className="text-muted-foreground mt-1">
