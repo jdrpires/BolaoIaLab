@@ -7,15 +7,21 @@ export function ProfileOnboarding() {
   const updatePhone = useUpdateMyPhone();
   const [phone, setPhone] = useState(me?.phone_number ?? "");
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
 
   if (!me || me.phone_number) return null;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    setError("");
     const digits = phone.replace(/\D/g, "");
     if (!digits) return;
-    await updatePhone.mutateAsync({ phone_number: digits });
-    setSaved(true);
+    try {
+      await updatePhone.mutateAsync({ phone_number: digits });
+      setSaved(true);
+    } catch {
+      setError("Não foi possível salvar agora. Tente novamente em alguns segundos.");
+    }
   };
 
   return (
@@ -38,6 +44,7 @@ export function ProfileOnboarding() {
             value={phone}
             onChange={(event) => {
               setSaved(false);
+              setError("");
               setPhone(event.target.value);
             }}
             inputMode="tel"
@@ -52,6 +59,7 @@ export function ProfileOnboarding() {
             {saved ? <Check className="size-4" /> : <Bell className="size-4" />}
             {saved ? "Salvo" : "Ativar"}
           </button>
+          {error && <div className="sm:col-span-2 text-xs text-destructive">{error}</div>}
         </form>
       </div>
     </div>
