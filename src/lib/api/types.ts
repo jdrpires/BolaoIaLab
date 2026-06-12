@@ -63,6 +63,17 @@ export type ApiUser = {
   notify_ranking: boolean;
 };
 
+export type ApiUserSummary = {
+  points: number;
+  rank: number | null;
+  participants: number;
+  predictions: number;
+  scored_predictions: number;
+  exact_hits: number;
+  winner_hits: number;
+  analyses_available: number;
+};
+
 export type ApiPrediction = {
   id: string;
   user_id: string;

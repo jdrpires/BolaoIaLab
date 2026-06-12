@@ -2,10 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout } from "@/components/AppLayout";
 import { AuthGate } from "@/components/AuthGate";
 import { TeamLogo } from "@/components/TeamLogo";
-import { lastResults, stats } from "@/lib/mock-data";
+import { lastResults } from "@/lib/mock-data";
 import { formatMatchDate, formatMatchTime, toRankingPlayer } from "@/lib/api/format";
-import { useIndividualRanking, useMatches, useMe } from "@/lib/api/hooks";
-import type { ApiTeam } from "@/lib/api/types";
+import { useIndividualRanking, useMatches, useMe, useMeSummary } from "@/lib/api/hooks";
+import type { ApiTeam, ApiUserSummary } from "@/lib/api/types";
 import {
   TrendingUp,
   TrendingDown,
@@ -22,43 +22,14 @@ export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
 });
 
-const statCards = [
-  {
-    label: "Seus pontos",
-    value: "224",
-    trend: "+12",
-    icon: Trophy,
-    accent: "from-fuchsia-500 to-purple-600",
-  },
-  {
-    label: "Posição",
-    value: "#3",
-    trend: "↑ 4",
-    icon: TrendingUp,
-    accent: "from-emerald-400 to-teal-500",
-  },
-  {
-    label: "Palpites feitos",
-    value: "32",
-    trend: "12 acertos",
-    icon: Target,
-    accent: "from-blue-500 to-indigo-600",
-  },
-  {
-    label: "Análises IA",
-    value: "18",
-    trend: "+3 hoje",
-    icon: Brain,
-    accent: "from-violet-500 to-fuchsia-500",
-  },
-];
-
 function Dashboard() {
   const { data: me } = useMe();
+  const { data: summary, isLoading: summaryLoading } = useMeSummary();
   const { data: apiMatches = [], isLoading: matchesLoading } = useMatches();
   const { data: apiRanking = [], isLoading: rankingLoading } = useIndividualRanking(5);
   const ranking = apiRanking.map(toRankingPlayer);
   const firstName = me?.full_name?.split(" ")[0] || "participante";
+  const statCards = dashboardCards(summary);
 
   return (
     <AppLayout>
@@ -70,8 +41,16 @@ function Dashboard() {
             </div>
             <h1 className="text-3xl md:text-4xl font-bold">Sua Copa Tech começou 🏆</h1>
             <p className="text-muted-foreground mt-1">
-              Você está em <span className="text-foreground font-medium">3º lugar</span> ·{" "}
-              {stats.participants} participantes na disputa
+              {summaryLoading ? (
+                "Carregando sua posição..."
+              ) : summary?.rank ? (
+                <>
+                  Você está em <span className="text-foreground font-medium">{summary.rank}º lugar</span> ·{" "}
+                  {summary.participants} participantes na disputa
+                </>
+              ) : (
+                "Faça seu primeiro palpite para entrar no ranking."
+              )}
             </p>
           </div>
           <Link
@@ -83,7 +62,7 @@ function Dashboard() {
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {statCards.map(({ label, value, trend, icon: Icon, accent }) => (
+          {statCards.map(({ label, value, detail, icon: Icon, accent }) => (
             <div key={label} className="glass rounded-2xl p-5 relative overflow-hidden">
               <div
                 className={`absolute -top-8 -right-8 size-24 rounded-full bg-gradient-to-br ${accent} opacity-30 blur-2xl`}
@@ -95,7 +74,7 @@ function Dashboard() {
                   >
                     <Icon className="size-5 text-white" />
                   </div>
-                  <span className="text-[10px] uppercase tracking-wider text-success">{trend}</span>
+                  <span className="text-[10px] uppercase tracking-wider text-success">{detail}</span>
                 </div>
                 <div className="text-3xl font-display font-bold">{value}</div>
                 <div className="text-xs text-muted-foreground mt-1">{label}</div>
@@ -226,6 +205,39 @@ function TeamSide({ team, align }: { team: ApiTeam; align: "left" | "right" }) {
       {align === "right" && <TeamLogo team={team} size="sm" />}
     </div>
   );
+}
+
+function dashboardCards(summary?: ApiUserSummary) {
+  return [
+    {
+      label: "Seus pontos",
+      value: String(summary?.points ?? 0),
+      detail: `${summary?.scored_predictions ?? 0} pontuado(s)`,
+      icon: Trophy,
+      accent: "from-fuchsia-500 to-purple-600",
+    },
+    {
+      label: "Posição",
+      value: summary?.rank ? `#${summary.rank}` : "-",
+      detail: `${summary?.participants ?? 0} participantes`,
+      icon: TrendingUp,
+      accent: "from-emerald-400 to-teal-500",
+    },
+    {
+      label: "Palpites feitos",
+      value: String(summary?.predictions ?? 0),
+      detail: `${summary?.winner_hits ?? 0} acerto(s)`,
+      icon: Target,
+      accent: "from-blue-500 to-indigo-600",
+    },
+    {
+      label: "Análises IA",
+      value: String(summary?.analyses_available ?? 0),
+      detail: `${summary?.exact_hits ?? 0} placar(es) exato(s)`,
+      icon: Brain,
+      accent: "from-violet-500 to-fuchsia-500",
+    },
+  ];
 }
 
 function EmptyLine({ label }: { label: string }) {

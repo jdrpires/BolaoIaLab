@@ -2,17 +2,25 @@ import secrets
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core import get_settings
 from app.application.audit import record_audit_event
-from app.domain.entities import Company, User
+from app.domain.entities import Company, GameAnalysis, Match, Prediction, User
 from app.infrastructure.db.session import get_session
 from app.infrastructure.external.google_oauth import GoogleOAuthClient
 from app.infrastructure.security.jwt import create_access_token
 from app.interfaces.api.dependencies import get_current_user
-from app.schemas.common import TokenRead, UserCompanyUpdate, UserNotificationPreferencesUpdate, UserPhoneUpdate, UserRead
+from app.schemas.common import (
+    TokenRead,
+    UserCompanyUpdate,
+    UserNotificationPreferencesUpdate,
+    UserPhoneUpdate,
+    UserRead,
+    UserSummaryRead,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -80,6 +88,46 @@ async def me(user: User = Depends(get_current_user)) -> User:
     return user
 
 
+@router.get("/me/summary", response_model=UserSummaryRead)
+async def me_summary(user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)) -> dict:
+    ranking_rows = await _ranking_rows(session)
+    rank = next((index + 1 for index, row in enumerate(ranking_rows) if row["id"] == user.id), None)
+    current = next((row for row in ranking_rows if row["id"] == user.id), None)
+    points = int(current["points"]) if current else 0
+
+    predictions = await _user_predictions_with_matches(user.id, session)
+    scored_predictions = [prediction for prediction in predictions if prediction.match.home_score is not None and prediction.match.away_score is not None]
+    exact_hits = 0
+    winner_hits = 0
+    for prediction in scored_predictions:
+        match = prediction.match
+        if prediction.home_score == match.home_score and prediction.away_score == match.away_score:
+            exact_hits += 1
+        if _outcome(prediction.home_score, prediction.away_score) == _outcome(match.home_score or 0, match.away_score or 0):
+            winner_hits += 1
+
+    match_ids = [prediction.match_id for prediction in predictions]
+    analyses_available = 0
+    if match_ids:
+        analyses_available = int(
+            await session.scalar(
+                select(func.count(func.distinct(GameAnalysis.match_id))).where(GameAnalysis.match_id.in_(match_ids))
+            )
+            or 0
+        )
+
+    return {
+        "points": points,
+        "rank": rank,
+        "participants": len(ranking_rows),
+        "predictions": len(predictions),
+        "scored_predictions": len(scored_predictions),
+        "exact_hits": exact_hits,
+        "winner_hits": winner_hits,
+        "analyses_available": analyses_available,
+    }
+
+
 @router.patch("/me/company", response_model=UserRead)
 async def update_my_company(
     payload: UserCompanyUpdate,
@@ -138,3 +186,36 @@ def _normalize_phone(phone_number: str | None) -> str | None:
         return None
     digits = "".join(character for character in phone_number if character.isdigit())
     return digits or None
+
+
+async def _ranking_rows(session: AsyncSession) -> list[dict]:
+    statement = (
+        select(
+            User.id,
+            func.coalesce(func.sum(Prediction.points), 0).label("points"),
+        )
+        .select_from(User)
+        .outerjoin(Prediction, Prediction.user_id == User.id)
+        .where(User.is_active.is_(True))
+        .group_by(User.id, User.full_name)
+        .order_by(desc("points"), User.full_name)
+    )
+    return [dict(row) for row in (await session.execute(statement)).mappings().all()]
+
+
+async def _user_predictions_with_matches(user_id, session: AsyncSession) -> list[Prediction]:  # type: ignore[no-untyped-def]
+    statement = (
+        select(Prediction)
+        .options(selectinload(Prediction.match))
+        .where(Prediction.user_id == user_id)
+        .order_by(Prediction.created_at.desc())
+    )
+    return list((await session.execute(statement)).scalars().all())
+
+
+def _outcome(home: int, away: int) -> str:
+    if home > away:
+        return "home"
+    if away > home:
+        return "away"
+    return "draw"

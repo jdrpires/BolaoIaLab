@@ -46,6 +46,17 @@ class UserRead(ApiModel):
     notify_ranking: bool = True
 
 
+class UserSummaryRead(BaseModel):
+    points: int
+    rank: int | None
+    participants: int
+    predictions: int
+    scored_predictions: int
+    exact_hits: int
+    winner_hits: int
+    analyses_available: int
+
+
 class UserCompanyUpdate(BaseModel):
     company_id: UUID
 
