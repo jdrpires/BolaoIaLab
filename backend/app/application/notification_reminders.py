@@ -68,7 +68,15 @@ async def send_upcoming_match_reminders(session: AsyncSession, minutes_before: i
 
 
 async def _users_with_phone(session: AsyncSession) -> list[User]:
-    statement = select(User).where(User.is_active.is_(True), User.phone_number.is_not(None)).order_by(User.full_name)
+    statement = (
+        select(User)
+        .where(
+            User.is_active.is_(True),
+            User.phone_number.is_not(None),
+            User.notify_match_reminders.is_(True),
+        )
+        .order_by(User.full_name)
+    )
     return list((await session.execute(statement)).scalars().all())
 
 

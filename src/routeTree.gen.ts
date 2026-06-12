@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as PalpitesRouteImport } from './routes/palpites'
+import { Route as MinhaContaRouteImport } from './routes/minha-conta'
 import { Route as IaRouteImport } from './routes/ia'
 import { Route as EstatisticasRouteImport } from './routes/estatisticas'
 import { Route as EmpresasRouteImport } from './routes/empresas'
@@ -27,6 +28,11 @@ const RankingRoute = RankingRouteImport.update({
 const PalpitesRoute = PalpitesRouteImport.update({
   id: '/palpites',
   path: '/palpites',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MinhaContaRoute = MinhaContaRouteImport.update({
+  id: '/minha-conta',
+  path: '/minha-conta',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IaRoute = IaRouteImport.update({
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/empresas': typeof EmpresasRoute
   '/estatisticas': typeof EstatisticasRoute
   '/ia': typeof IaRoute
+  '/minha-conta': typeof MinhaContaRoute
   '/palpites': typeof PalpitesRoute
   '/ranking': typeof RankingRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/empresas': typeof EmpresasRoute
   '/estatisticas': typeof EstatisticasRoute
   '/ia': typeof IaRoute
+  '/minha-conta': typeof MinhaContaRoute
   '/palpites': typeof PalpitesRoute
   '/ranking': typeof RankingRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/empresas': typeof EmpresasRoute
   '/estatisticas': typeof EstatisticasRoute
   '/ia': typeof IaRoute
+  '/minha-conta': typeof MinhaContaRoute
   '/palpites': typeof PalpitesRoute
   '/ranking': typeof RankingRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estatisticas'
     | '/ia'
+    | '/minha-conta'
     | '/palpites'
     | '/ranking'
     | '/auth/callback'
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estatisticas'
     | '/ia'
+    | '/minha-conta'
     | '/palpites'
     | '/ranking'
     | '/auth/callback'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estatisticas'
     | '/ia'
+    | '/minha-conta'
     | '/palpites'
     | '/ranking'
     | '/auth/callback'
@@ -142,6 +154,7 @@ export interface RootRouteChildren {
   EmpresasRoute: typeof EmpresasRoute
   EstatisticasRoute: typeof EstatisticasRoute
   IaRoute: typeof IaRoute
+  MinhaContaRoute: typeof MinhaContaRoute
   PalpitesRoute: typeof PalpitesRoute
   RankingRoute: typeof RankingRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/palpites'
       fullPath: '/palpites'
       preLoaderRoute: typeof PalpitesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/minha-conta': {
+      id: '/minha-conta'
+      path: '/minha-conta'
+      fullPath: '/minha-conta'
+      preLoaderRoute: typeof MinhaContaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ia': {
@@ -222,6 +242,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmpresasRoute: EmpresasRoute,
   EstatisticasRoute: EstatisticasRoute,
   IaRoute: IaRoute,
+  MinhaContaRoute: MinhaContaRoute,
   PalpitesRoute: PalpitesRoute,
   RankingRoute: RankingRoute,
   AuthCallbackRoute: AuthCallbackRoute,

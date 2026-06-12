@@ -11,7 +11,7 @@ from app.infrastructure.db.session import get_session
 from app.infrastructure.external.google_oauth import GoogleOAuthClient
 from app.infrastructure.security.jwt import create_access_token
 from app.interfaces.api.dependencies import get_current_user
-from app.schemas.common import TokenRead, UserCompanyUpdate, UserPhoneUpdate, UserRead
+from app.schemas.common import TokenRead, UserCompanyUpdate, UserNotificationPreferencesUpdate, UserPhoneUpdate, UserRead
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -89,6 +89,20 @@ async def update_my_phone(
     session: AsyncSession = Depends(get_session),
 ) -> User:
     user.phone_number = _normalize_phone(payload.phone_number)
+    await session.commit()
+    await session.refresh(user)
+    return user
+
+
+@router.patch("/me/notification-preferences", response_model=UserRead)
+async def update_my_notification_preferences(
+    payload: UserNotificationPreferencesUpdate,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> User:
+    updates = payload.model_dump(exclude_unset=True)
+    for field, value in updates.items():
+        setattr(user, field, value)
     await session.commit()
     await session.refresh(user)
     return user

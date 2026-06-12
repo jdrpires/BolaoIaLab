@@ -8,6 +8,7 @@ import {
   BarChart3,
   LogOut,
   Shield,
+  UserCircle,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { clearAccessToken, startGoogleLogin } from "@/lib/api/client";
@@ -23,6 +24,7 @@ const nav = [
   { to: "/ranking", label: "Ranking Geral", icon: Trophy },
   { to: "/empresas", label: "Empresas", icon: Building2 },
   { to: "/estatisticas", label: "Estatísticas", icon: BarChart3 },
+  { to: "/minha-conta", label: "Minha Conta", icon: UserCircle },
 ] as const;
 
 export function AppLayout({ children }: { children: ReactNode }) {

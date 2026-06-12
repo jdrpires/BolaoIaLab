@@ -58,6 +58,9 @@ export type ApiUser = {
   phone_number: string | null;
   avatar_url: string | null;
   role: "admin" | "player";
+  notify_match_reminders: boolean;
+  notify_results: boolean;
+  notify_ranking: boolean;
 };
 
 export type ApiPrediction = {
@@ -108,6 +111,12 @@ export type UpdateMyCompanyPayload = {
 
 export type UpdateMyPhonePayload = {
   phone_number: string | null;
+};
+
+export type UpdateMyNotificationPreferencesPayload = {
+  notify_match_reminders?: boolean;
+  notify_results?: boolean;
+  notify_ranking?: boolean;
 };
 
 export type UpdateCompanyPayload = Partial<CreateCompanyPayload> & {

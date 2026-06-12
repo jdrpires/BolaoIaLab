@@ -41,6 +41,9 @@ class UserRead(ApiModel):
     phone_number: str | None = None
     avatar_url: str | None
     role: str
+    notify_match_reminders: bool = True
+    notify_results: bool = True
+    notify_ranking: bool = True
 
 
 class UserCompanyUpdate(BaseModel):
@@ -49,6 +52,12 @@ class UserCompanyUpdate(BaseModel):
 
 class UserPhoneUpdate(BaseModel):
     phone_number: str | None = Field(default=None, max_length=32)
+
+
+class UserNotificationPreferencesUpdate(BaseModel):
+    notify_match_reminders: bool | None = None
+    notify_results: bool | None = None
+    notify_ranking: bool | None = None
 
 
 class TeamCreate(BaseModel):

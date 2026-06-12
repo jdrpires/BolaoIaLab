@@ -20,6 +20,7 @@ import type {
   UpdateMyCompanyPayload,
   UpdateCompanyPayload,
   UpdateMatchPayload,
+  UpdateMyNotificationPreferencesPayload,
   UpdateMyPhonePayload,
   UpdateTeamPayload,
   UpdateUserPayload,
@@ -144,6 +145,17 @@ export function useUpdateMyPhone() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: UpdateMyPhonePayload) => apiPatch<ApiUser>("/auth/me/phone", payload),
+    onSuccess: async (user) => {
+      queryClient.setQueryData(apiKeys.me, user);
+    },
+  });
+}
+
+export function useUpdateMyNotificationPreferences() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpdateMyNotificationPreferencesPayload) =>
+      apiPatch<ApiUser>("/auth/me/notification-preferences", payload),
     onSuccess: async (user) => {
       queryClient.setQueryData(apiKeys.me, user);
     },

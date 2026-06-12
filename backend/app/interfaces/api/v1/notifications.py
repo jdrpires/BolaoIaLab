@@ -52,7 +52,7 @@ async def send_match_result(payload: MatchNotificationPayload, session: AsyncSes
     match = await _match_or_404(payload.match_id, session)
     if match.home_score is None or match.away_score is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Match result is not available")
-    users = await _users_with_phone(session)
+    users = await _users_with_phone(session, preference="results")
     sent = 0
     for user in users:
         prediction = await _prediction_for(user.id, match.id, session)
@@ -72,7 +72,7 @@ async def send_ranking(session: AsyncSession = Depends(get_session)) -> dict:
     ranking = await RankingService(session).individual(limit=5)
     ranking_lines = "\n".join([f"{row['rank']}. {row['full_name']} - {row['points']} pts" for row in ranking])
     message = f"Ranking Copa Tech atualizado:\n{ranking_lines or 'Ainda sem pontuacao.'}"
-    users = await _users_with_phone(session)
+    users = await _users_with_phone(session, preference="ranking")
     sent = 0
     for user in users:
         await _send_and_record(session, user.id, user.phone_number or "", message, {"type": "ranking"})
@@ -89,8 +89,13 @@ async def _match_or_404(match_id: UUID, session: AsyncSession) -> Match:
     return match
 
 
-async def _users_with_phone(session: AsyncSession) -> list[User]:
-    statement = select(User).where(User.is_active.is_(True), User.phone_number.is_not(None)).order_by(User.full_name)
+async def _users_with_phone(session: AsyncSession, preference: str | None = None) -> list[User]:
+    conditions = [User.is_active.is_(True), User.phone_number.is_not(None)]
+    if preference == "results":
+        conditions.append(User.notify_results.is_(True))
+    elif preference == "ranking":
+        conditions.append(User.notify_ranking.is_(True))
+    statement = select(User).where(*conditions).order_by(User.full_name)
     return list((await session.execute(statement)).scalars().all())
 
 

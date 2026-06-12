@@ -58,6 +58,9 @@ class User(TimestampMixin, Base):
     google_sub: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.PLAYER, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    notify_match_reminders: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    notify_results: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    notify_ranking: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     company: Mapped[Company | None] = relationship(back_populates="users", lazy="selectin")
     predictions: Mapped[list["Prediction"]] = relationship(back_populates="user")
