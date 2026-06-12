@@ -188,6 +188,26 @@ export type ApiStatisticsOverview = {
   }>;
 };
 
+export type ApiRoundFeed = {
+  stage: string | null;
+  matches: number;
+  predictions: number;
+  participants: number;
+  highlights: Array<{
+    label: string;
+    value: string;
+    detail: string | null;
+  }>;
+  ranking: Array<{
+    id: string;
+    full_name: string;
+    company_name: string | null;
+    points: number;
+    predictions: number;
+    rank: number;
+  }>;
+};
+
 export type ApiGameAnalysis = {
   id: string;
   match_id: string;

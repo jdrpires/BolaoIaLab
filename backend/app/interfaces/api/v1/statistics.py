@@ -1,12 +1,23 @@
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import and_, desc, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.entities import Company, GameAnalysis, Match, Prediction, User
+from app.application.rankings import RankingService
+from app.domain.entities import Company, GameAnalysis, Match, MatchStatus, Prediction, User
 from app.infrastructure.db.session import get_session
-from app.schemas.common import CompanyDistribution, DailyActivity, PopularScore, PredictionsByMatch, StatisticsKpis, StatisticsOverview
+from app.schemas.common import (
+    CompanyDistribution,
+    DailyActivity,
+    PopularScore,
+    PredictionsByMatch,
+    RoundFeed,
+    RoundFeedHighlight,
+    RoundRankingItem,
+    StatisticsKpis,
+    StatisticsOverview,
+)
 
 router = APIRouter(prefix="/statistics", tags=["statistics"])
 
@@ -107,6 +118,114 @@ async def overview(session: AsyncSession = Depends(get_session)) -> StatisticsOv
     )
 
 
+@router.get("/round-feed", response_model=RoundFeed)
+async def round_feed(
+    stage: str | None = Query(default=None),
+    session: AsyncSession = Depends(get_session),
+) -> RoundFeed:
+    selected_stage = stage or await _current_stage(session)
+    if not selected_stage:
+        return RoundFeed(stage=None, matches=0, predictions=0, participants=0, highlights=[], ranking=[])
+
+    matches = await session.scalar(select(func.count(Match.id)).where(Match.stage == selected_stage)) or 0
+    predictions = await session.scalar(
+        select(func.count(Prediction.id)).join(Match, Match.id == Prediction.match_id).where(Match.stage == selected_stage)
+    ) or 0
+    participants = await session.scalar(
+        select(func.count(distinct(Prediction.user_id)))
+        .join(Match, Match.id == Prediction.match_id)
+        .where(Match.stage == selected_stage)
+    ) or 0
+
+    labels = await _match_labels(session)
+    highlights: list[RoundFeedHighlight] = []
+
+    most_predicted = (
+        await session.execute(
+            select(Match.id, Match.starts_at, func.count(Prediction.id).label("predictions"))
+            .join(Prediction, Prediction.match_id == Match.id)
+            .where(Match.stage == selected_stage)
+            .group_by(Match.id, Match.starts_at)
+            .order_by(desc("predictions"), Match.starts_at)
+            .limit(1)
+        )
+    ).mappings().first()
+    if most_predicted:
+        highlights.append(
+            RoundFeedHighlight(
+                label="Jogo mais apostado",
+                value=labels.get(most_predicted["id"], "Jogo"),
+                detail=f"{int(most_predicted['predictions'])} palpites",
+            )
+        )
+
+    popular_score = (
+        await session.execute(
+            select(
+                func.concat(Prediction.home_score, " x ", Prediction.away_score).label("score"),
+                func.count(Prediction.id).label("count"),
+            )
+            .join(Match, Match.id == Prediction.match_id)
+            .where(Match.stage == selected_stage)
+            .group_by("score")
+            .order_by(desc("count"))
+            .limit(1)
+        )
+    ).mappings().first()
+    if popular_score:
+        highlights.append(
+            RoundFeedHighlight(
+                label="Placar favorito",
+                value=popular_score["score"],
+                detail=f"{int(popular_score['count'])} apostas",
+            )
+        )
+
+    most_diverse = (
+        await session.execute(
+            select(
+                Match.id,
+                func.count(distinct(func.concat(Prediction.home_score, ":", Prediction.away_score))).label("scores"),
+            )
+            .join(Prediction, Prediction.match_id == Match.id)
+            .where(Match.stage == selected_stage)
+            .group_by(Match.id)
+            .order_by(desc("scores"))
+            .limit(1)
+        )
+    ).mappings().first()
+    if most_diverse:
+        highlights.append(
+            RoundFeedHighlight(
+                label="Maior divergência",
+                value=labels.get(most_diverse["id"], "Jogo"),
+                detail=f"{int(most_diverse['scores'])} placares diferentes",
+            )
+        )
+
+    ranking_rows = await RankingService(session).individual_by_stage(stage=selected_stage, limit=5)
+    ranking = [
+        RoundRankingItem(
+            id=row["id"],
+            full_name=row["full_name"],
+            company_name=row["company_name"],
+            points=int(row["points"] or 0),
+            predictions=int(row["predictions"] or 0),
+            rank=int(row["rank"]),
+        )
+        for row in ranking_rows
+    ]
+
+    return RoundFeed(
+        stage=selected_stage,
+        matches=int(matches),
+        predictions=int(predictions),
+        participants=int(participants),
+        highlights=highlights,
+        ranking=ranking,
+    )
+
+
 async def _match_labels(session: AsyncSession) -> dict:
     from app.domain.entities import Team
 
@@ -126,6 +245,19 @@ async def _match_labels(session: AsyncSession) -> dict:
     ).mappings().all()
     away = {row["id"]: row["away_short"] for row in rows}
     return {match_id: f"{home.get(match_id, '?')} x {away.get(match_id, '?')}" for match_id in set(home) | set(away)}
+
+
+async def _current_stage(session: AsyncSession) -> str | None:
+    upcoming = await session.scalar(
+        select(Match.stage)
+        .where(Match.status.in_([MatchStatus.SCHEDULED, MatchStatus.LIVE]))
+        .order_by(Match.starts_at)
+        .limit(1)
+    )
+    if upcoming:
+        return upcoming
+
+    return await session.scalar(select(Match.stage).order_by(desc(Match.starts_at)).limit(1))
 
 
 async def _daily_activity(session: AsyncSession) -> list[DailyActivity]:

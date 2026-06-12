@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.application.rankings import RankingService
+from app.core import get_settings
 from app.domain.entities import Match, MatchStatus, Notification, Prediction, User
 from app.infrastructure.db.session import get_session
 from app.infrastructure.external.whatsapp import WhatsAppClient
@@ -35,6 +36,7 @@ async def send_whatsapp(payload: NotificationCreate, session: AsyncSession = Dep
 @router.post("/whatsapp/reminders")
 async def send_match_reminders(payload: MatchNotificationPayload, session: AsyncSession = Depends(get_session)) -> dict:
     match = await _match_or_404(payload.match_id, session)
+    settings = get_settings()
     users = await _users_with_phone(session)
     sent = 0
     skipped = 0
@@ -44,8 +46,10 @@ async def send_match_reminders(payload: MatchNotificationPayload, session: Async
             skipped += 1
             continue
         message = (
-            f"Lembrete Copa Tech: seu palpite para {match.home_team.short_name} x {match.away_team.short_name} "
-            f"fecha em {match.starts_at.astimezone(UTC).strftime('%d/%m %H:%M')} UTC. Acesse o bolao e participe."
+            f"Oi, {user.full_name.split()[0]}! Seu palpite para "
+            f"{match.home_team.short_name} x {match.away_team.short_name} ainda está pendente. "
+            f"O jogo começa em {match.starts_at.astimezone(UTC).strftime('%d/%m às %H:%M')} UTC. "
+            f"Acesse {settings.frontend_app_url}/palpites e participe."
         )
         await _send_and_record(session, user.id, user.phone_number or "", message, {"type": "match_reminder", "match_id": str(match.id)})
         sent += 1

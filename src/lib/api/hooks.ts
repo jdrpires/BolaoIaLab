@@ -9,6 +9,7 @@ import type {
   ApiMatch,
   ApiNotification,
   ApiPrediction,
+  ApiRoundFeed,
   ApiStatisticsOverview,
   ApiTeam,
   ApiUser,
@@ -34,6 +35,7 @@ export const apiKeys = {
   users: ["users"] as const,
   notifications: ["notifications"] as const,
   statistics: ["statistics"] as const,
+  roundFeed: ["statistics", "round-feed"] as const,
   me: ["auth", "me"] as const,
   myPredictions: ["predictions", "mine"] as const,
   analysis: (matchId: string) => ["analysis", matchId] as const,
@@ -113,6 +115,15 @@ export function useStatisticsOverview() {
   return useQuery({
     queryKey: apiKeys.statistics,
     queryFn: () => apiGet<ApiStatisticsOverview>("/statistics/overview"),
+    staleTime: 20_000,
+  });
+}
+
+export function useRoundFeed(stage?: string | null) {
+  const query = stage ? `?stage=${encodeURIComponent(stage)}` : "";
+  return useQuery({
+    queryKey: [...apiKeys.roundFeed, stage ?? "current"],
+    queryFn: () => apiGet<ApiRoundFeed>(`/statistics/round-feed${query}`),
     staleTime: 20_000,
   });
 }

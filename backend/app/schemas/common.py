@@ -217,6 +217,30 @@ class StatisticsOverview(BaseModel):
     company_distribution: list[CompanyDistribution]
 
 
+class RoundFeedHighlight(BaseModel):
+    label: str
+    value: str
+    detail: str | None = None
+
+
+class RoundRankingItem(BaseModel):
+    id: UUID
+    full_name: str
+    company_name: str | None
+    points: int
+    predictions: int
+    rank: int
+
+
+class RoundFeed(BaseModel):
+    stage: str | None
+    matches: int
+    predictions: int
+    participants: int
+    highlights: list[RoundFeedHighlight]
+    ranking: list[RoundRankingItem]
+
+
 class MatchNotificationPayload(BaseModel):
     match_id: UUID
 

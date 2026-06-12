@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppLayout } from "@/components/AppLayout";
-import { useStatisticsOverview } from "@/lib/api/hooks";
+import { useRoundFeed, useStatisticsOverview } from "@/lib/api/hooks";
 import {
   Activity,
   BarChart3,
@@ -33,6 +33,7 @@ export const Route = createFileRoute("/estatisticas")({
 
 function EstatisticasPage() {
   const { data, isLoading } = useStatisticsOverview();
+  const { data: roundFeed } = useRoundFeed();
 
   const kpis = [
     {
@@ -107,6 +108,8 @@ function EstatisticasPage() {
           </div>
         ))}
       </div>
+
+      <RoundFeedSection data={roundFeed} />
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 glass rounded-2xl p-6">
@@ -289,6 +292,82 @@ function EstatisticasPage() {
   );
 }
 
+function RoundFeedSection({ data }: { data?: ReturnType<typeof useRoundFeed>["data"] }) {
+  const highlights = data?.highlights ?? [];
+  const ranking = data?.ranking ?? [];
+
+  return (
+    <div className="grid lg:grid-cols-3 gap-5 mb-6">
+      <div className="lg:col-span-2 glass rounded-2xl p-6">
+        <div className="flex items-start justify-between gap-4 mb-5">
+          <div>
+            <div className="text-xs uppercase tracking-[0.25em] text-primary mb-2">
+              Feed da rodada
+            </div>
+            <h2 className="font-display font-bold text-xl">{data?.stage ?? "Rodada atual"}</h2>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center text-xs">
+            <RoundMiniStat label="Jogos" value={data?.matches ?? 0} />
+            <RoundMiniStat label="Palpites" value={data?.predictions ?? 0} />
+            <RoundMiniStat label="Players" value={data?.participants ?? 0} />
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-3">
+          {(highlights.length ? highlights : emptyHighlights).map((item) => (
+            <div key={item.label} className="rounded-xl bg-background/45 p-4">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
+                {item.label}
+              </div>
+              <div className="font-display font-bold text-lg">{item.value}</div>
+              {item.detail && <div className="text-xs text-primary mt-1">{item.detail}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="glass rounded-2xl p-6">
+        <h2 className="font-display font-bold text-lg mb-1 flex items-center gap-2">
+          <Trophy className="size-5 text-primary" /> Top da rodada
+        </h2>
+        <p className="text-xs text-muted-foreground mb-4">Pontuação somente nesta rodada</p>
+        <div className="space-y-2">
+          {ranking.length === 0 && (
+            <div className="rounded-xl bg-background/45 p-4 text-sm text-muted-foreground">
+              Ainda não há pontos nesta rodada.
+            </div>
+          )}
+          {ranking.map((player) => (
+            <div
+              key={player.id}
+              className="flex items-center justify-between rounded-xl bg-background/45 px-3 py-2"
+            >
+              <div className="min-w-0">
+                <div className="text-sm font-semibold truncate">
+                  {player.rank}. {player.full_name}
+                </div>
+                <div className="text-[11px] text-muted-foreground truncate">
+                  {player.company_name ?? "Sem empresa"} · {player.predictions} palpites
+                </div>
+              </div>
+              <div className="font-display font-bold text-primary">{player.points}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RoundMiniStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg bg-background/50 px-3 py-2">
+      <div className="font-display font-bold text-base">{value.toLocaleString("pt-BR")}</div>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
 function ChartCard({
   title,
   subtitle,
@@ -321,6 +400,12 @@ const fallbackColors = [
   "oklch(0.75 0.18 60)",
   "oklch(0.7 0.22 340)",
   "oklch(0.68 0.18 25)",
+];
+
+const emptyHighlights = [
+  { label: "Jogo mais apostado", value: "Aguardando palpites", detail: null },
+  { label: "Placar favorito", value: "Aguardando", detail: null },
+  { label: "Maior divergência", value: "Aguardando", detail: null },
 ];
 
 const tooltipStyle = {

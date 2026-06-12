@@ -1,7 +1,7 @@
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.entities import Company, Prediction, User
+from app.domain.entities import Company, Match, Prediction, User
 
 
 class RankingService:
@@ -24,6 +24,28 @@ class RankingService:
             .where(User.is_active.is_(True))
             .group_by(User.id, Company.name)
             .order_by(desc("points"), User.full_name)
+            .limit(limit)
+        )
+        rows = (await self.session.execute(statement)).mappings().all()
+        return [{**dict(row), "rank": index + 1} for index, row in enumerate(rows)]
+
+    async def individual_by_stage(self, stage: str, limit: int = 20) -> list[dict]:
+        statement = (
+            select(
+                User.id,
+                User.full_name,
+                User.email,
+                Company.name.label("company_name"),
+                func.coalesce(func.sum(Prediction.points), 0).label("points"),
+                func.count(Prediction.id).label("predictions"),
+            )
+            .select_from(User)
+            .outerjoin(Company, Company.id == User.company_id)
+            .join(Prediction, Prediction.user_id == User.id)
+            .join(Match, Match.id == Prediction.match_id)
+            .where(User.is_active.is_(True), Match.stage == stage)
+            .group_by(User.id, Company.name)
+            .order_by(desc("points"), desc("predictions"), User.full_name)
             .limit(limit)
         )
         rows = (await self.session.execute(statement)).mappings().all()
