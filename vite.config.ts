@@ -2,15 +2,11 @@ import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import { tanstackRouterGenerator } from "@tanstack/router-plugin/vite";
 import { defineConfig } from "vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
   plugins: [
-    tanstackRouterGenerator({
-      target: "react",
-    }),
     tanstackStart({
       server: { entry: "server" },
     }),
@@ -29,6 +25,9 @@ export default defineConfig({
     port: 5173,
     strictPort: false,
     allowedHosts: ["railway-subsoil-extended.ngrok-free.dev"],
+    watch: {
+      ignored: ["**/src/routeTree.gen.ts"],
+    },
     proxy: {
       "/api": {
         target: "http://localhost:8000",
