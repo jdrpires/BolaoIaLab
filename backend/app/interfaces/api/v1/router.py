@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.interfaces.api.v1 import (
+    admin_audit,
     analysis,
     admin_health,
     assets,
@@ -15,6 +16,7 @@ from app.interfaces.api.v1 import (
 )
 
 api_router = APIRouter()
+api_router.include_router(admin_audit.router)
 api_router.include_router(admin_health.router)
 api_router.include_router(assets.router)
 api_router.include_router(auth.router)

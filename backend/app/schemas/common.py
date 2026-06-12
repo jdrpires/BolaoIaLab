@@ -188,6 +188,23 @@ class NotificationRead(ApiModel):
     created_at: datetime
 
 
+class AuditActorRead(ApiModel):
+    id: UUID
+    full_name: str
+    email: str
+
+
+class AuditEventRead(ApiModel):
+    id: UUID
+    actor_user_id: UUID | None
+    actor: AuditActorRead | None = None
+    action: str
+    target_type: str
+    target_id: str | None
+    metadata_json: dict
+    created_at: datetime
+
+
 class StatisticsKpis(BaseModel):
     participants: int
     companies: int

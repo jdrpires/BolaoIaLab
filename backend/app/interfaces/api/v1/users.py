@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.application.audit import record_audit_event
 from app.domain.entities import Company, User, UserRole
 from app.infrastructure.db.session import get_session
 from app.interfaces.api.dependencies import require_admin
@@ -20,10 +21,22 @@ async def list_users(session: AsyncSession = Depends(get_session)) -> list[User]
 
 
 @router.patch("/{user_id}", response_model=UserRead)
-async def update_user(user_id: UUID, payload: UserAdminUpdate, session: AsyncSession = Depends(get_session)) -> User:
+async def update_user(
+    user_id: UUID,
+    payload: UserAdminUpdate,
+    actor: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> User:
     user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    before = {
+        "company_id": user.company_id,
+        "role": user.role,
+        "phone_number": user.phone_number,
+        "is_active": user.is_active,
+    }
 
     if payload.company_id is not None:
         company = await session.get(Company, payload.company_id)
@@ -38,6 +51,20 @@ async def update_user(user_id: UUID, payload: UserAdminUpdate, session: AsyncSes
     if payload.is_active is not None:
         user.is_active = payload.is_active
 
+    after = {
+        "company_id": user.company_id,
+        "role": user.role,
+        "phone_number": user.phone_number,
+        "is_active": user.is_active,
+    }
+    await record_audit_event(
+        session,
+        action="admin.user_updated",
+        target_type="user",
+        target_id=user.id,
+        actor=actor,
+        metadata={"before": before, "after": after},
+    )
     await session.commit()
     await session.refresh(user)
     return user

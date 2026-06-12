@@ -5,6 +5,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.application.audit import record_audit_event
 from app.application.notification_reminders import send_match_reminders_for_match, send_upcoming_match_reminders
 from app.application.rankings import RankingService
 from app.domain.entities import Match, Notification, Prediction, User
@@ -26,29 +27,68 @@ async def list_notifications(
 
 
 @router.post("/whatsapp")
-async def send_whatsapp(payload: NotificationCreate, session: AsyncSession = Depends(get_session)) -> dict:
+async def send_whatsapp(
+    payload: NotificationCreate,
+    actor: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
     notification = await _send_and_record(session, payload.user_id, payload.destination, payload.message, {"type": "manual"})
+    await record_audit_event(
+        session,
+        action="whatsapp.manual_sent",
+        target_type="notification",
+        target_id=notification.id,
+        actor=actor,
+        metadata={"user_id": payload.user_id, "destination": payload.destination, "status": notification.status},
+    )
     await session.commit()
     return {"notification_id": notification.id, "status": notification.status}
 
 
 @router.post("/whatsapp/reminders")
-async def send_match_reminders(payload: MatchNotificationPayload, session: AsyncSession = Depends(get_session)) -> dict:
+async def send_match_reminders(
+    payload: MatchNotificationPayload,
+    actor: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
     match = await _match_or_404(payload.match_id, session)
     result = await send_match_reminders_for_match(session, match, source="admin")
+    await record_audit_event(
+        session,
+        action="whatsapp.match_reminders_sent",
+        target_type="match",
+        target_id=match.id,
+        actor=actor,
+        metadata=result,
+    )
     await session.commit()
     return result
 
 
 @router.post("/whatsapp/upcoming-reminders")
-async def send_upcoming_reminders(payload: UpcomingReminderPayload, session: AsyncSession = Depends(get_session)) -> dict:
+async def send_upcoming_reminders(
+    payload: UpcomingReminderPayload,
+    actor: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
     result = await send_upcoming_match_reminders(session, payload.minutes_before, source="admin_upcoming")
+    await record_audit_event(
+        session,
+        action="whatsapp.upcoming_reminders_sent",
+        target_type="matches",
+        actor=actor,
+        metadata={"minutes_before": payload.minutes_before, "result": result},
+    )
     await session.commit()
     return result
 
 
 @router.post("/whatsapp/results")
-async def send_match_result(payload: MatchNotificationPayload, session: AsyncSession = Depends(get_session)) -> dict:
+async def send_match_result(
+    payload: MatchNotificationPayload,
+    actor: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
     match = await _match_or_404(payload.match_id, session)
     if match.home_score is None or match.away_score is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Match result is not available")
@@ -63,12 +103,24 @@ async def send_match_result(payload: MatchNotificationPayload, session: AsyncSes
         )
         await _send_and_record(session, user.id, user.phone_number or "", message, {"type": "match_result", "match_id": str(match.id)})
         sent += 1
+    result = {"sent": sent}
+    await record_audit_event(
+        session,
+        action="whatsapp.result_sent",
+        target_type="match",
+        target_id=match.id,
+        actor=actor,
+        metadata=result,
+    )
     await session.commit()
-    return {"sent": sent}
+    return result
 
 
 @router.post("/whatsapp/ranking")
-async def send_ranking(session: AsyncSession = Depends(get_session)) -> dict:
+async def send_ranking(
+    actor: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
     ranking = await RankingService(session).individual(limit=5)
     ranking_lines = "\n".join([f"{row['rank']}. {row['full_name']} - {row['points']} pts" for row in ranking])
     message = f"Ranking Copa Tech atualizado:\n{ranking_lines or 'Ainda sem pontuacao.'}"
@@ -77,8 +129,16 @@ async def send_ranking(session: AsyncSession = Depends(get_session)) -> dict:
     for user in users:
         await _send_and_record(session, user.id, user.phone_number or "", message, {"type": "ranking"})
         sent += 1
+    result = {"sent": sent}
+    await record_audit_event(
+        session,
+        action="whatsapp.ranking_sent",
+        target_type="ranking",
+        actor=actor,
+        metadata=result,
+    )
     await session.commit()
-    return {"sent": sent}
+    return result
 
 
 async def _match_or_404(match_id: UUID, session: AsyncSession) -> Match:

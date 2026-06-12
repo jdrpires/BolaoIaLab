@@ -64,6 +64,7 @@ class User(TimestampMixin, Base):
 
     company: Mapped[Company | None] = relationship(back_populates="users", lazy="selectin")
     predictions: Mapped[list["Prediction"]] = relationship(back_populates="user")
+    audit_events: Mapped[list["AuditEvent"]] = relationship(back_populates="actor")
 
 
 class Team(TimestampMixin, Base):
@@ -141,3 +142,16 @@ class Notification(TimestampMixin, Base):
     payload: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
     user: Mapped[User] = relationship(lazy="selectin")
+
+
+class AuditEvent(TimestampMixin, Base):
+    __tablename__ = "audit_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    action: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    target_type: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    target_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+
+    actor: Mapped[User | None] = relationship(back_populates="audit_events", lazy="selectin")

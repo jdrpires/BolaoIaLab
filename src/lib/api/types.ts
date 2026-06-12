@@ -216,6 +216,21 @@ export type ApiOperationalHealth = {
   }>;
 };
 
+export type ApiAuditEvent = {
+  id: string;
+  actor_user_id: string | null;
+  actor: {
+    id: string;
+    full_name: string;
+    email: string;
+  } | null;
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  metadata_json: Record<string, unknown>;
+  created_at: string;
+};
+
 export type ApiStatisticsOverview = {
   kpis: {
     participants: number;

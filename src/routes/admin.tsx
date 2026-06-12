@@ -3,6 +3,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { AuthGate } from "@/components/AuthGate";
 import { TeamLogo } from "@/components/TeamLogo";
 import {
+  useAuditEvents,
   useCreateCompany,
   useCreateMatch,
   useCreateTeam,
@@ -27,6 +28,7 @@ import {
 } from "@/lib/api/hooks";
 import { formatMatchDate, formatMatchTime } from "@/lib/api/format";
 import type {
+  ApiAuditEvent,
   ApiCompany,
   ApiFixtureSyncResult,
   ApiMatch,
@@ -73,6 +75,7 @@ function AdminPage() {
         </div>
 
         <OperationalHealthPanel />
+        <AuditTrailPanel />
 
         <div className="grid xl:grid-cols-2 gap-5">
           <CompanyForm />
@@ -92,6 +95,52 @@ function AdminPage() {
         </div>
       </AuthGate>
     </AppLayout>
+  );
+}
+
+function AuditTrailPanel() {
+  const { data: events = [], isLoading, refetch, isFetching } = useAuditEvents(60);
+
+  return (
+    <AdminCard
+      title="Histórico de ações importantes"
+      icon={History}
+      action={
+        <button
+          type="button"
+          onClick={() => void refetch()}
+          className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-semibold hover:bg-muted"
+          disabled={isFetching}
+        >
+          <RefreshCw className={`size-3.5 ${isFetching ? "animate-spin" : ""}`} /> Atualizar
+        </button>
+      }
+    >
+      {isLoading && <div className="text-sm text-muted-foreground">Carregando ações...</div>}
+      {!isLoading && events.length === 0 && (
+        <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
+          Nenhuma ação importante registrada ainda.
+        </div>
+      )}
+      <div className="grid lg:grid-cols-2 gap-3">
+        {events.map((event) => (
+          <div key={event.id} className="rounded-md border border-border bg-muted/20 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold">{auditActionLabel(event.action)}</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {event.actor?.full_name ?? "Sistema"} · {formatDateTime(event.created_at)}
+                </div>
+              </div>
+              <span className="rounded-full border border-border px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                {event.target_type}
+              </span>
+            </div>
+            <div className="mt-3 text-xs text-muted-foreground">{auditEventSummary(event)}</div>
+          </div>
+        ))}
+      </div>
+    </AdminCard>
   );
 }
 
@@ -1131,6 +1180,45 @@ function toDatetimeLocal(value: string) {
   const offset = date.getTimezoneOffset();
   const local = new Date(date.getTime() - offset * 60_000);
   return local.toISOString().slice(0, 16);
+}
+
+function auditActionLabel(action: string) {
+  const labels: Record<string, string> = {
+    "auth.login": "Login Google",
+    "user.company_changed": "Empresa alterada",
+    "admin.user_updated": "Usuário atualizado",
+    "company.created": "Empresa criada",
+    "company.updated": "Empresa editada",
+    "team.created": "Time criado",
+    "team.updated": "Time editado",
+    "match.created": "Jogo criado",
+    "match.updated": "Jogo editado",
+    "match.result_updated": "Resultado alterado",
+    "match.score_recalculated": "Pontuação recalculada",
+    "football.fixtures_synced": "Fixtures sincronizadas",
+    "football.results_synced": "Resultados sincronizados",
+    "whatsapp.manual_sent": "WhatsApp manual enviado",
+    "whatsapp.match_reminders_sent": "Lembretes do jogo enviados",
+    "whatsapp.upcoming_reminders_sent": "Lembretes próximos enviados",
+    "whatsapp.scheduler_reminders_sent": "Lembretes automáticos enviados",
+    "whatsapp.result_sent": "Resultado enviado no WhatsApp",
+    "whatsapp.ranking_sent": "Ranking enviado no WhatsApp",
+  };
+  return labels[action] ?? action;
+}
+
+function auditEventSummary(event: ApiAuditEvent) {
+  const metadata = event.metadata_json ?? {};
+  const result = metadata.result as Record<string, unknown> | undefined;
+  const sent = metadata.sent ?? result?.sent;
+  const checked = result?.fixtures_checked ?? result?.matches_checked ?? metadata.matches_checked;
+  const scored = metadata.predictions_scored ?? result?.predictions_scored;
+
+  if (typeof sent === "number") return `${sent} mensagem(ns) enviada(s).`;
+  if (typeof checked === "number") return `${checked} item(ns) verificado(s).`;
+  if (typeof scored === "number") return `${scored} palpite(s) recalculado(s).`;
+  if (event.target_id) return `Alvo ${event.target_id.slice(0, 8)}.`;
+  return "Evento registrado na operação.";
 }
 
 function formatDateTime(value: string) {

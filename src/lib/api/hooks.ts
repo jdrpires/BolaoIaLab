@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPatch, apiPost, apiPut, getAccessToken } from "@/lib/api/client";
 import type {
+  ApiAuditEvent,
   ApiCompany,
   ApiCompanyRanking,
   ApiGameAnalysis,
@@ -39,6 +40,7 @@ export const apiKeys = {
     ["rankings", "round", stage ?? "current", limit] as const,
   users: ["users"] as const,
   notifications: ["notifications"] as const,
+  auditEvents: ["admin", "audit-events"] as const,
   operationalHealth: ["admin", "health"] as const,
   statistics: ["statistics"] as const,
   roundFeed: ["statistics", "round-feed"] as const,
@@ -139,6 +141,16 @@ export function useOperationalHealth() {
   });
 }
 
+export function useAuditEvents(limit = 80) {
+  return useQuery({
+    queryKey: [...apiKeys.auditEvents, limit],
+    queryFn: () => apiGet<ApiAuditEvent[]>(`/admin/audit-events?limit=${limit}`),
+    enabled: Boolean(getAccessToken()),
+    staleTime: 15_000,
+    retry: false,
+  });
+}
+
 export function useStatisticsOverview() {
   return useQuery({
     queryKey: apiKeys.statistics,
@@ -163,6 +175,7 @@ export function useUpdateMyCompany() {
     onSuccess: async (user) => {
       queryClient.setQueryData(apiKeys.me, user);
       await queryClient.invalidateQueries({ queryKey: apiKeys.companyRanking });
+      await queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents });
     },
   });
 }
@@ -207,6 +220,7 @@ export function useUpsertPrediction() {
       await queryClient.invalidateQueries({ queryKey: apiKeys.myPredictions });
       await queryClient.invalidateQueries({ queryKey: apiKeys.individualRanking });
       await queryClient.invalidateQueries({ queryKey: apiKeys.companyRanking });
+      await queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents });
     },
   });
 }
@@ -218,6 +232,7 @@ export function useCreateCompany() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: apiKeys.companies });
       await queryClient.invalidateQueries({ queryKey: apiKeys.companyRanking });
+      await queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents });
     },
   });
 }
@@ -231,6 +246,7 @@ export function useUpdateCompany() {
       await queryClient.invalidateQueries({ queryKey: apiKeys.companies });
       await queryClient.invalidateQueries({ queryKey: apiKeys.companyRanking });
       await queryClient.invalidateQueries({ queryKey: apiKeys.users });
+      await queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents });
     },
   });
 }
@@ -241,6 +257,7 @@ export function useCreateTeam() {
     mutationFn: (payload: CreateTeamPayload) => apiPost<ApiTeam>("/teams", payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: apiKeys.teams });
+      await queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents });
     },
   });
 }
@@ -253,6 +270,7 @@ export function useUpdateTeam() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: apiKeys.teams });
       await queryClient.invalidateQueries({ queryKey: apiKeys.matches });
+      await queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents });
     },
   });
 }
@@ -263,6 +281,7 @@ export function useCreateMatch() {
     mutationFn: (payload: CreateMatchPayload) => apiPost<ApiMatch>("/matches", payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: apiKeys.matches });
+      await queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents });
     },
   });
 }
@@ -274,6 +293,7 @@ export function useUpdateMatch() {
       apiPatch<ApiMatch>(`/matches/${matchId}`, payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: apiKeys.matches });
+      await queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents });
     },
   });
 }
@@ -287,6 +307,7 @@ export function useUpdateMatchResult() {
       await queryClient.invalidateQueries({ queryKey: apiKeys.matches });
       await queryClient.invalidateQueries({ queryKey: apiKeys.individualRanking });
       await queryClient.invalidateQueries({ queryKey: apiKeys.companyRanking });
+      await queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents });
     },
   });
 }
@@ -303,6 +324,7 @@ export function useRecalculateMatch() {
       await queryClient.invalidateQueries({ queryKey: apiKeys.matches });
       await queryClient.invalidateQueries({ queryKey: apiKeys.individualRanking });
       await queryClient.invalidateQueries({ queryKey: apiKeys.companyRanking });
+      await queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents });
     },
   });
 }
@@ -319,6 +341,7 @@ export function useSyncFixtures() {
         queryClient.invalidateQueries({ queryKey: apiKeys.individualRanking }),
         queryClient.invalidateQueries({ queryKey: apiKeys.companyRanking }),
         queryClient.invalidateQueries({ queryKey: apiKeys.statistics }),
+        queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents }),
       ]);
     },
   });
@@ -335,6 +358,7 @@ export function useSyncResults() {
         queryClient.invalidateQueries({ queryKey: apiKeys.individualRanking }),
         queryClient.invalidateQueries({ queryKey: apiKeys.companyRanking }),
         queryClient.invalidateQueries({ queryKey: apiKeys.statistics }),
+        queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents }),
       ]);
     },
   });
@@ -350,6 +374,7 @@ export function useUpdateUser() {
       await queryClient.invalidateQueries({ queryKey: apiKeys.individualRanking });
       await queryClient.invalidateQueries({ queryKey: apiKeys.companyRanking });
       await queryClient.invalidateQueries({ queryKey: apiKeys.me });
+      await queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents });
     },
   });
 }
@@ -364,6 +389,7 @@ export function useSendMatchReminder() {
       ),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: apiKeys.notifications });
+      await queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents });
     },
   });
 }
@@ -378,6 +404,7 @@ export function useSendUpcomingReminders() {
       ),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: apiKeys.notifications });
+      await queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents });
     },
   });
 }
@@ -389,6 +416,7 @@ export function useSendMatchResult() {
       apiPost<{ sent: number }>("/notifications/whatsapp/results", { match_id: matchId }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: apiKeys.notifications });
+      await queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents });
     },
   });
 }
@@ -399,6 +427,7 @@ export function useSendRanking() {
     mutationFn: () => apiPost<{ sent: number }>("/notifications/whatsapp/ranking", {}),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: apiKeys.notifications });
+      await queryClient.invalidateQueries({ queryKey: apiKeys.auditEvents });
     },
   });
 }

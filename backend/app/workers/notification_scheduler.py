@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+from app.application.audit import record_audit_event
 from app.application.notification_reminders import send_upcoming_match_reminders
 from app.core import get_settings
 from app.infrastructure.db.session import AsyncSessionLocal
@@ -17,6 +18,16 @@ async def run_once() -> dict:
             minutes_before=settings.notification_reminder_window_minutes,
             source="scheduler",
         )
+        if int(result.get("matches_checked", 0)) > 0 or int(result.get("sent", 0)) > 0:
+            await record_audit_event(
+                session,
+                action="whatsapp.scheduler_reminders_sent",
+                target_type="matches",
+                metadata={
+                    "minutes_before": settings.notification_reminder_window_minutes,
+                    "result": result,
+                },
+            )
         await session.commit()
         logger.info("notification_scheduler_cycle_completed", extra=result)
         return result

@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import get_settings
+from app.application.audit import record_audit_event
 from app.domain.entities import Company, User
 from app.infrastructure.db.session import get_session
 from app.infrastructure.external.google_oauth import GoogleOAuthClient
@@ -35,6 +36,7 @@ async def google_callback(code: str = Query(...), session: AsyncSession = Depend
     email = profile["email"].lower()
     result = await session.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
+    created = user is None
 
     if user is None:
         domain = email.split("@")[-1]
@@ -52,6 +54,20 @@ async def google_callback(code: str = Query(...), session: AsyncSession = Depend
         user.avatar_url = _safe_avatar_url(profile) or user.avatar_url
         user.google_sub = profile.get("sub") or user.google_sub
 
+    await session.flush()
+    await record_audit_event(
+        session,
+        action="auth.login",
+        target_type="user",
+        target_id=user.id,
+        actor=user,
+        metadata={
+            "email": user.email,
+            "created": created,
+            "company_id": user.company_id,
+            "provider": "google",
+        },
+    )
     await session.commit()
     await session.refresh(user)
     token = create_access_token(user.id, user.email)
@@ -76,7 +92,16 @@ async def update_my_company(
 
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
 
+    old_company_id = user.company_id
     user.company_id = company.id
+    await record_audit_event(
+        session,
+        action="user.company_changed",
+        target_type="user",
+        target_id=user.id,
+        actor=user,
+        metadata={"old_company_id": old_company_id, "new_company_id": company.id},
+    )
     await session.commit()
     await session.refresh(user)
     return user
