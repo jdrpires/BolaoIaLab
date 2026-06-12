@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     whatsapp_access_token: str = ""
     whatsapp_phone_number_id: str = ""
 
+    notification_scheduler_enabled: bool = True
+    notification_scheduler_interval_seconds: int = 900
+    notification_reminder_window_minutes: int = 60
+
     @field_validator("api_football_default_league", "api_football_default_season", mode="before")
     @classmethod
     def empty_string_as_none(cls, value: object) -> object:

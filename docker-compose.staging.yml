@@ -100,6 +100,30 @@ services:
       timeout: 5s
       retries: 10
 
+  notification-scheduler:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file:
+      - path: ${APP_ENV_FILE:-.env.staging}
+        required: true
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-bolao}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-bolao}
+      ENVIRONMENT: staging
+      WHATSAPP_PROVIDER: baileys
+      WHATSAPP_GATEWAY_URL: http://whatsapp-gateway:3001
+      NOTIFICATION_SCHEDULER_ENABLED: ${NOTIFICATION_SCHEDULER_ENABLED:-true}
+      NOTIFICATION_SCHEDULER_INTERVAL_SECONDS: ${NOTIFICATION_SCHEDULER_INTERVAL_SECONDS:-900}
+      NOTIFICATION_REMINDER_WINDOW_MINUTES: ${NOTIFICATION_REMINDER_WINDOW_MINUTES:-60}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      whatsapp-gateway:
+        condition: service_healthy
+    command: python -m app.workers.notification_scheduler
+
   whatsapp-gateway:
     build:
       context: ./whatsapp-gateway

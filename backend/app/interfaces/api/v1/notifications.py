@@ -1,4 +1,3 @@
-from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -6,9 +5,9 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.application.notification_reminders import send_match_reminders_for_match, send_upcoming_match_reminders
 from app.application.rankings import RankingService
-from app.core import get_settings
-from app.domain.entities import Match, MatchStatus, Notification, Prediction, User
+from app.domain.entities import Match, Notification, Prediction, User
 from app.infrastructure.db.session import get_session
 from app.infrastructure.external.whatsapp import WhatsAppClient
 from app.interfaces.api.dependencies import require_admin
@@ -36,42 +35,16 @@ async def send_whatsapp(payload: NotificationCreate, session: AsyncSession = Dep
 @router.post("/whatsapp/reminders")
 async def send_match_reminders(payload: MatchNotificationPayload, session: AsyncSession = Depends(get_session)) -> dict:
     match = await _match_or_404(payload.match_id, session)
-    settings = get_settings()
-    users = await _users_with_phone(session)
-    sent = 0
-    skipped = 0
-    for user in users:
-        has_prediction = await _has_prediction(user.id, match.id, session)
-        if has_prediction:
-            skipped += 1
-            continue
-        message = (
-            f"Oi, {user.full_name.split()[0]}! Seu palpite para "
-            f"{match.home_team.short_name} x {match.away_team.short_name} ainda está pendente. "
-            f"O jogo começa em {match.starts_at.astimezone(UTC).strftime('%d/%m às %H:%M')} UTC. "
-            f"Acesse {settings.frontend_app_url}/palpites e participe."
-        )
-        await _send_and_record(session, user.id, user.phone_number or "", message, {"type": "match_reminder", "match_id": str(match.id)})
-        sent += 1
+    result = await send_match_reminders_for_match(session, match, source="admin")
     await session.commit()
-    return {"sent": sent, "skipped_with_prediction": skipped}
+    return result
 
 
 @router.post("/whatsapp/upcoming-reminders")
 async def send_upcoming_reminders(payload: UpcomingReminderPayload, session: AsyncSession = Depends(get_session)) -> dict:
-    now = datetime.now(UTC)
-    until = now + timedelta(minutes=payload.minutes_before)
-    statement = (
-        select(Match)
-        .options(selectinload(Match.home_team), selectinload(Match.away_team))
-        .where(Match.starts_at > now, Match.starts_at <= until, Match.status == MatchStatus.SCHEDULED)
-    )
-    matches = list((await session.execute(statement)).scalars().all())
-    total_sent = 0
-    for match in matches:
-        result = await send_match_reminders(MatchNotificationPayload(match_id=match.id), session)
-        total_sent += int(result["sent"])
-    return {"matches_checked": len(matches), "sent": total_sent}
+    result = await send_upcoming_match_reminders(session, payload.minutes_before, source="admin_upcoming")
+    await session.commit()
+    return result
 
 
 @router.post("/whatsapp/results")
@@ -119,10 +92,6 @@ async def _match_or_404(match_id: UUID, session: AsyncSession) -> Match:
 async def _users_with_phone(session: AsyncSession) -> list[User]:
     statement = select(User).where(User.is_active.is_(True), User.phone_number.is_not(None)).order_by(User.full_name)
     return list((await session.execute(statement)).scalars().all())
-
-
-async def _has_prediction(user_id: UUID, match_id: UUID, session: AsyncSession) -> bool:
-    return await _prediction_for(user_id, match_id, session) is not None
 
 
 async def _prediction_for(user_id: UUID, match_id: UUID, session: AsyncSession) -> Prediction | None:

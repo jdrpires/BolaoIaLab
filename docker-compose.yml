@@ -51,6 +51,30 @@ services:
              python -m app.infrastructure.db.seed &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log"
 
+  notification-scheduler:
+    build:
+      context: ./backend
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://bolao:bolao@postgres:5432/bolao
+      WHATSAPP_PROVIDER: baileys
+      WHATSAPP_GATEWAY_URL: http://whatsapp-gateway:3001
+      NOTIFICATION_SCHEDULER_ENABLED: "true"
+      NOTIFICATION_SCHEDULER_INTERVAL_SECONDS: 900
+      NOTIFICATION_REMINDER_WINDOW_MINUTES: 60
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      whatsapp-gateway:
+        condition: service_healthy
+    command: python -m app.workers.notification_scheduler
+
   whatsapp-gateway:
     build:
       context: ./whatsapp-gateway
