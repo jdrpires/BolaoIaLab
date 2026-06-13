@@ -20,8 +20,13 @@ export function clearAccessToken() {
   window.localStorage.removeItem(TOKEN_STORAGE_KEY);
 }
 
-export function startGoogleLogin() {
-  window.location.assign(`${API_BASE_URL}/auth/google/start`);
+export async function startGoogleLogin() {
+  try {
+    const data = await apiGet<{ authorization_url: string }>("/auth/google/login");
+    window.location.assign(data.authorization_url);
+  } catch {
+    window.location.assign(`${API_BASE_URL}/auth/google/start`);
+  }
 }
 
 export class ApiError extends Error {
