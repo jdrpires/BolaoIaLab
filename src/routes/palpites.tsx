@@ -6,7 +6,7 @@ import { ApiError, getAccessToken, startGoogleLogin } from "@/lib/api/client";
 import { formatMatchDate, formatMatchTime } from "@/lib/api/format";
 import { useMatches, useMyPredictions, useUpsertPrediction } from "@/lib/api/hooks";
 import type { ApiMatch, ApiPrediction, ApiTeam } from "@/lib/api/types";
-import { AlertCircle, Check, Lock, Medal, Save, Sparkles } from "lucide-react";
+import { AlertCircle, Check, History, Lock, Medal, Save, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 export const Route = createFileRoute("/palpites")({
@@ -24,6 +24,15 @@ function Palpites() {
   const predictionsByMatch = useMemo(
     () => new Map(savedPredictions.map((prediction) => [prediction.match_id, prediction])),
     [savedPredictions],
+  );
+  const openMatches = useMemo(() => matches.filter((match) => !isClosed(match)), [matches]);
+  const lockedMatches = useMemo(
+    () => matches.filter((match) => isClosed(match) && match.status !== "finished"),
+    [matches],
+  );
+  const finishedMatches = useMemo(
+    () => matches.filter((match) => match.status === "finished"),
+    [matches],
   );
 
   useEffect(() => {
@@ -101,10 +110,20 @@ function Palpites() {
       <AuthGate>
         <div className="mb-8">
           <div className="text-xs uppercase tracking-[0.25em] text-primary mb-2">Rodada atual</div>
-          <h1 className="text-3xl md:text-4xl font-bold">Seus palpites</h1>
-          <p className="text-muted-foreground mt-1">
-            Informe o placar antes do início da partida. Jogos fechados ficam bloqueados.
-          </p>
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold">Seus palpites</h1>
+              <p className="text-muted-foreground mt-1">
+                Primeiro os jogos abertos. Encerrados ficam no histórico para consulta.
+              </p>
+            </div>
+            <Link
+              to="/historico"
+              className="inline-flex items-center justify-center gap-2 rounded-xl glass px-4 py-2.5 text-sm font-medium hover:bg-primary/10 hover:border-primary/40 transition"
+            >
+              <History className="size-4 text-primary" /> Histórico
+            </Link>
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -118,20 +137,109 @@ function Palpites() {
               Nenhum jogo cadastrado para palpites.
             </div>
           )}
-          {matches.map((match) => (
-            <PredictionCard
-              key={match.id}
-              match={match}
-              pick={picks[match.id] || { h: "", a: "" }}
-              prediction={predictionsByMatch.get(match.id)}
+          <PredictionSection
+            title="Abertos para palpite"
+            description="Prioridade máxima: jogos que ainda aceitam edição."
+            empty="Nenhum jogo aberto para palpite agora."
+            matches={openMatches}
+            picks={picks}
+            predictionsByMatch={predictionsByMatch}
+            saving={upsertPrediction.isPending}
+            onScore={setScore}
+            onSave={save}
+          />
+
+          {lockedMatches.length > 0 && (
+            <PredictionSection
+              title="Fechados"
+              description="Jogos que começaram ou estão ao vivo."
+              matches={lockedMatches}
+              picks={picks}
+              predictionsByMatch={predictionsByMatch}
               saving={upsertPrediction.isPending}
               onScore={setScore}
-              onSave={() => void save(match)}
+              onSave={save}
             />
-          ))}
+          )}
+
+          {finishedMatches.length > 0 && (
+            <section className="pt-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-display text-xl font-bold">Encerrados</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Últimos resultados. A lista completa está no histórico.
+                  </p>
+                </div>
+                <Link to="/historico" className="text-xs text-primary hover:underline">
+                  Ver histórico
+                </Link>
+              </div>
+              <div className="space-y-4">
+                {finishedMatches.slice(0, 3).map((match) => (
+                  <PredictionCard
+                    key={match.id}
+                    match={match}
+                    pick={picks[match.id] || { h: "", a: "" }}
+                    prediction={predictionsByMatch.get(match.id)}
+                    saving={upsertPrediction.isPending}
+                    onScore={setScore}
+                    onSave={() => void save(match)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </AuthGate>
     </AppLayout>
+  );
+}
+
+function PredictionSection({
+  title,
+  description,
+  empty,
+  matches,
+  picks,
+  predictionsByMatch,
+  saving,
+  onScore,
+  onSave,
+}: {
+  title: string;
+  description: string;
+  empty?: string;
+  matches: ApiMatch[];
+  picks: Record<string, PickState>;
+  predictionsByMatch: Map<string, ApiPrediction>;
+  saving: boolean;
+  onScore: (id: string, side: "h" | "a", value: string) => void;
+  onSave: (match: ApiMatch) => Promise<void>;
+}) {
+  return (
+    <section>
+      <div className="mb-3">
+        <h2 className="font-display text-xl font-bold">{title}</h2>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      {matches.length === 0 && empty && (
+        <div className="glass rounded-2xl p-6 text-sm text-muted-foreground">{empty}</div>
+      )}
+      <div className="space-y-4">
+        {matches.map((match) => (
+          <PredictionCard
+            key={match.id}
+            match={match}
+            pick={picks[match.id] || { h: "", a: "" }}
+            prediction={predictionsByMatch.get(match.id)}
+            saving={saving}
+            onScore={onScore}
+            onSave={() => void onSave(match)}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -293,7 +401,7 @@ function ScoreInput({
   );
 }
 
-function isClosed(match: ApiMatch) {
+export function isClosed(match: ApiMatch) {
   return match.status !== "scheduled" || new Date(match.starts_at).getTime() <= Date.now();
 }
 
@@ -308,7 +416,7 @@ function validatePick(match: ApiMatch, pick?: PickState) {
   return null;
 }
 
-function statusBadge(match: ApiMatch) {
+export function statusBadge(match: ApiMatch) {
   if (match.status === "finished")
     return { label: "Finalizado", className: "bg-muted text-muted-foreground" };
   if (match.status === "live")

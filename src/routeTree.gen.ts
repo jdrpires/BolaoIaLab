@@ -16,6 +16,7 @@ import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as PalpitesRouteImport } from './routes/palpites'
 import { Route as MinhaContaRouteImport } from './routes/minha-conta'
 import { Route as IaRouteImport } from './routes/ia'
+import { Route as HistoricoRouteImport } from './routes/historico'
 import { Route as EstatisticasRouteImport } from './routes/estatisticas'
 import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -58,6 +59,11 @@ const IaRoute = IaRouteImport.update({
   path: '/ia',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HistoricoRoute = HistoricoRouteImport.update({
+  id: '/historico',
+  path: '/historico',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EstatisticasRoute = EstatisticasRouteImport.update({
   id: '/estatisticas',
   path: '/estatisticas',
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estatisticas': typeof EstatisticasRoute
+  '/historico': typeof HistoricoRoute
   '/ia': typeof IaRoute
   '/minha-conta': typeof MinhaContaRoute
   '/palpites': typeof PalpitesRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estatisticas': typeof EstatisticasRoute
+  '/historico': typeof HistoricoRoute
   '/ia': typeof IaRoute
   '/minha-conta': typeof MinhaContaRoute
   '/palpites': typeof PalpitesRoute
@@ -126,6 +134,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estatisticas': typeof EstatisticasRoute
+  '/historico': typeof HistoricoRoute
   '/ia': typeof IaRoute
   '/minha-conta': typeof MinhaContaRoute
   '/palpites': typeof PalpitesRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estatisticas'
+    | '/historico'
     | '/ia'
     | '/minha-conta'
     | '/palpites'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estatisticas'
+    | '/historico'
     | '/ia'
     | '/minha-conta'
     | '/palpites'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estatisticas'
+    | '/historico'
     | '/ia'
     | '/minha-conta'
     | '/palpites'
@@ -189,6 +201,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   EmpresasRoute: typeof EmpresasRoute
   EstatisticasRoute: typeof EstatisticasRoute
+  HistoricoRoute: typeof HistoricoRoute
   IaRoute: typeof IaRoute
   MinhaContaRoute: typeof MinhaContaRoute
   PalpitesRoute: typeof PalpitesRoute
@@ -250,6 +263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/historico': {
+      id: '/historico'
+      path: '/historico'
+      fullPath: '/historico'
+      preLoaderRoute: typeof HistoricoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/estatisticas': {
       id: '/estatisticas'
       path: '/estatisticas'
@@ -301,6 +321,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   EmpresasRoute: EmpresasRoute,
   EstatisticasRoute: EstatisticasRoute,
+  HistoricoRoute: HistoricoRoute,
   IaRoute: IaRoute,
   MinhaContaRoute: MinhaContaRoute,
   PalpitesRoute: PalpitesRoute,

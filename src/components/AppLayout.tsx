@@ -10,6 +10,7 @@ import {
   LogOut,
   Shield,
   UserCircle,
+  History,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { clearAccessToken, startGoogleLogin } from "@/lib/api/client";
@@ -21,6 +22,7 @@ import { ProfileOnboarding } from "@/components/ProfileOnboarding";
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/palpites", label: "Palpites", icon: Target },
+  { to: "/historico", label: "Histórico", icon: History },
   { to: "/ia", label: "Análise IA", icon: Sparkles },
   { to: "/ranking", label: "Ranking Geral", icon: Trophy },
   { to: "/rodada", label: "Rodada", icon: CalendarDays },
