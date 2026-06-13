@@ -38,6 +38,12 @@ def google_login() -> dict:
     return {"authorization_url": GoogleOAuthClient().login_url(state), "state": state}
 
 
+@router.get("/google/start")
+def google_start() -> RedirectResponse:
+    state = secrets.token_urlsafe(24)
+    return RedirectResponse(GoogleOAuthClient().login_url(state))
+
+
 @router.get("/google/callback")
 async def google_callback(code: str = Query(...), session: AsyncSession = Depends(get_session)) -> RedirectResponse:
     profile = await GoogleOAuthClient().exchange_code(code)
